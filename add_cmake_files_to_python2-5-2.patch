@@ -1,0 +1,2456 @@
+diff --git a/CMake/CheckStructHasMember.cmake b/CMake/CheckStructHasMember.cmake
+new file mode 100644
+index 0000000..04fe6ed
+--- /dev/null
++++ b/CMake/CheckStructHasMember.cmake
+@@ -0,0 +1,42 @@
++# - Check if the given struct or class has the specified member variable
++# CHECK_STRUCT_HAS_MEMBER (STRUCT MEMBER HEADER VARIABLE)
++#
++#  STRUCT - the name of the struct or class you are interested in
++#  MEMBER - the member which existence you want to check
++#  HEADER - the header(s) where the prototype should be declared
++#  VARIABLE - variable to store the result
++#
++# The following variables may be set before calling this macro to
++# modify the way the check is run:
++#
++#  CMAKE_REQUIRED_FLAGS = string of compile command line flags
++#  CMAKE_REQUIRED_DEFINITIONS = list of macros to define (-DFOO=bar)
++#  CMAKE_REQUIRED_INCLUDES = list of include directories
++
++# Copyright (c) 2006, Alexander Neundorf, <neundorf@kde.org>
++#
++# Redistribution and use is allowed according to the terms of the BSD license.
++# For details see the accompanying COPYING-CMAKE-SCRIPTS file.
++
++
++INCLUDE(CheckCSourceCompiles)
++
++MACRO (CHECK_STRUCT_HAS_MEMBER _STRUCT _MEMBER _HEADER _RESULT)
++   SET(_INCLUDE_FILES)
++   FOREACH (it ${_HEADER})
++      SET(_INCLUDE_FILES "${_INCLUDE_FILES}#include <${it}>\n")
++   ENDFOREACH (it)
++
++   SET(_CHECK_STRUCT_MEMBER_SOURCE_CODE "
++${_INCLUDE_FILES}
++int main()
++{
++   ${_STRUCT}* tmp;
++   tmp->${_MEMBER};
++  return 0;
++}
++")
++   CHECK_C_SOURCE_COMPILES("${_CHECK_STRUCT_MEMBER_SOURCE_CODE}" ${_RESULT})
++
++ENDMACRO (CHECK_STRUCT_HAS_MEMBER)
++
+diff --git a/CMake/CheckTypeExists.cmake b/CMake/CheckTypeExists.cmake
+new file mode 100644
+index 0000000..6118276
+--- /dev/null
++++ b/CMake/CheckTypeExists.cmake
+@@ -0,0 +1,28 @@
++# - Check if the given struct or class has the specified member variable
++# CHECK_STRUCT_MEMBER (STRUCT MEMBER HEADER VARIABLE)
++#
++#  STRUCT - the name of the struct or class you are interested in
++#  MEMBER - the member which existence you want to check
++#  HEADER - the header(s) where the prototype should be declared
++#  VARIABLE - variable to store the result
++#
++# The following variables may be set before calling this macro to
++# modify the way the check is run:
++#
++#  CMAKE_REQUIRED_FLAGS = string of compile command line flags
++#  CMAKE_REQUIRED_DEFINITIONS = list of macros to define (-DFOO=bar)
++#  CMAKE_REQUIRED_INCLUDES = list of include directories
++
++# Copyright (c) 2006, Alexander Neundorf, <neundorf@kde.org>
++#
++# Redistribution and use is allowed according to the terms of the BSD license.
++# For details see the accompanying COPYING-CMAKE-SCRIPTS file.
++
++
++INCLUDE(CheckTypeSize)
++
++MACRO (CHECK_TYPE_EXISTS _TYPE _HEADER _RESULT)
++   SET(CMAKE_EXTRA_INCLUDE_FILES ${_HEADER})
++   CHECK_TYPE_SIZE(${_TYPE} ${_RESULT})
++ENDMACRO (CHECK_TYPE_EXISTS)
++
+diff --git a/CMake/MacroPushRequiredVars.cmake b/CMake/MacroPushRequiredVars.cmake
+new file mode 100644
+index 0000000..650b566
+--- /dev/null
++++ b/CMake/MacroPushRequiredVars.cmake
+@@ -0,0 +1,47 @@
++# this module defines two macros:
++# MACRO_PUSH_REQUIRED_VARS()
++# and
++# MACRO_POP_REQUIRED_VARS()
++# use these if you call cmake macros which use
++# any of the CMAKE_REQUIRED_XXX variables
++#
++# Usage:
++# MACRO_PUSH_REQUIRED_VARS()
++# SET(CMAKE_REQUIRED_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS} -DSOME_MORE_DEF)
++# CHECK_FUNCTION_EXISTS(...)
++# MACRO_POP_REQUIRED_VARS()
++
++# Copyright (c) 2006, Alexander Neundorf, <neundorf@kde.org>
++#
++# Redistribution and use is allowed according to the terms of the BSD license.
++# For details see the accompanying COPYING-CMAKE-SCRIPTS file.
++
++MACRO(MACRO_PUSH_REQUIRED_VARS)
++
++   IF(NOT DEFINED _PUSH_REQUIRED_VARS_COUNTER)
++      SET(_PUSH_REQUIRED_VARS_COUNTER 0)
++   ENDIF(NOT DEFINED _PUSH_REQUIRED_VARS_COUNTER)
++
++   MATH(EXPR _PUSH_REQUIRED_VARS_COUNTER "${_PUSH_REQUIRED_VARS_COUNTER}+1")
++
++   SET(_CMAKE_REQUIRED_INCLUDES_SAVE_${_PUSH_REQUIRED_VARS_COUNTER}    ${CMAKE_REQUIRED_INCLUDES})
++   SET(_CMAKE_REQUIRED_DEFINITIONS_SAVE_${_PUSH_REQUIRED_VARS_COUNTER} ${CMAKE_REQUIRED_DEFINITIONS})
++   SET(_CMAKE_REQUIRED_LIBRARIES_SAVE_${_PUSH_REQUIRED_VARS_COUNTER}   ${CMAKE_REQUIRED_LIBRARIES})
++   SET(_CMAKE_REQUIRED_FLAGS_SAVE_${_PUSH_REQUIRED_VARS_COUNTER}       ${CMAKE_REQUIRED_FLAGS})
++ENDMACRO(MACRO_PUSH_REQUIRED_VARS)
++
++MACRO(MACRO_POP_REQUIRED_VARS)
++
++# don't pop more than we pushed
++   IF("${_PUSH_REQUIRED_VARS_COUNTER}" GREATER "0")
++
++      SET(CMAKE_REQUIRED_INCLUDES    ${_CMAKE_REQUIRED_INCLUDES_SAVE_${_PUSH_REQUIRED_VARS_COUNTER}})
++      SET(CMAKE_REQUIRED_DEFINITIONS ${_CMAKE_REQUIRED_DEFINITIONS_SAVE_${_PUSH_REQUIRED_VARS_COUNTER}})
++      SET(CMAKE_REQUIRED_LIBRARIES   ${_CMAKE_REQUIRED_LIBRARIES_SAVE_${_PUSH_REQUIRED_VARS_COUNTER}})
++      SET(CMAKE_REQUIRED_FLAGS       ${_CMAKE_REQUIRED_FLAGS_SAVE_${_PUSH_REQUIRED_VARS_COUNTER}})
++
++      MATH(EXPR _PUSH_REQUIRED_VARS_COUNTER "${_PUSH_REQUIRED_VARS_COUNTER}-1")
++   ENDIF("${_PUSH_REQUIRED_VARS_COUNTER}" GREATER "0")
++
++ENDMACRO(MACRO_POP_REQUIRED_VARS)
++
+diff --git a/CMake/TryRunResults-Python-bgl-gcc.cmake b/CMake/TryRunResults-Python-bgl-gcc.cmake
+new file mode 100644
+index 0000000..dcdfd79
+--- /dev/null
++++ b/CMake/TryRunResults-Python-bgl-gcc.cmake
+@@ -0,0 +1,39 @@
++# This file was generated by CMake because it detected TRY_RUN() commands
++# in crosscompiling mode. It will be overwritten by the next CMake run.
++# Copy it to a safe location, set the variables to appropriate values
++# and use it then to preset the CMake cache (using -C).
++
++
++# HAVE_BROKEN_NICE_EXITCODE
++#    indicates whether the executable would have been able to run on its
++#    target platform. If so, set HAVE_BROKEN_NICE_EXITCODE to
++#    the exit code (in many cases 0 for success), otherwise enter "FAILED_TO_RUN".
++# The HAVE_BROKEN_NICE_COMPILED variable holds the build result for this TRY_RUN().
++# 
++# Source file   : /gpfs/gpfs0/home/gevecb/alex/src/python-svn/build-bgl/CMakeFiles/CMakeTmp/src.c
++# Executable    : /gpfs/gpfs0/home/gevecb/alex/src/python-svn/build-bgl/cmTryCompileExec-HAVE_BROKEN_NICE_EXITCODE
++# Run arguments : 
++#    Called from: [2]   /gpfs/gpfs0/home/gevecb/alex/src/python-svn/ConfigureChecks.cmake
++#                 [1]   /gpfs/gpfs0/home/gevecb/alex/src/python-svn/CMakeLists.txt
++
++SET( HAVE_BROKEN_NICE_EXITCODE 
++     "0"
++     CACHE STRING "Result from TRY_RUN" FORCE)
++
++
++# HAVE_BROKEN_POLL_EXITCODE
++#    indicates whether the executable would have been able to run on its
++#    target platform. If so, set HAVE_BROKEN_POLL_EXITCODE to
++#    the exit code (in many cases 0 for success), otherwise enter "FAILED_TO_RUN".
++# The HAVE_BROKEN_POLL_COMPILED variable holds the build result for this TRY_RUN().
++# 
++# Source file   : /gpfs/gpfs0/home/gevecb/alex/src/python-svn/build-bgl/CMakeFiles/CMakeTmp/src.c
++# Executable    : /gpfs/gpfs0/home/gevecb/alex/src/python-svn/build-bgl/cmTryCompileExec-HAVE_BROKEN_POLL_EXITCODE
++# Run arguments : 
++#    Called from: [2]   /gpfs/gpfs0/home/gevecb/alex/src/python-svn/ConfigureChecks.cmake
++#                 [1]   /gpfs/gpfs0/home/gevecb/alex/src/python-svn/CMakeLists.txt
++
++SET( HAVE_BROKEN_POLL_EXITCODE 
++     "1"
++     CACHE STRING "Result from TRY_RUN" FORCE)
++
+diff --git a/CMake/TryRunResults-Python-catamount-gcc.cmake b/CMake/TryRunResults-Python-catamount-gcc.cmake
+new file mode 100644
+index 0000000..dcdfd79
+--- /dev/null
++++ b/CMake/TryRunResults-Python-catamount-gcc.cmake
+@@ -0,0 +1,39 @@
++# This file was generated by CMake because it detected TRY_RUN() commands
++# in crosscompiling mode. It will be overwritten by the next CMake run.
++# Copy it to a safe location, set the variables to appropriate values
++# and use it then to preset the CMake cache (using -C).
++
++
++# HAVE_BROKEN_NICE_EXITCODE
++#    indicates whether the executable would have been able to run on its
++#    target platform. If so, set HAVE_BROKEN_NICE_EXITCODE to
++#    the exit code (in many cases 0 for success), otherwise enter "FAILED_TO_RUN".
++# The HAVE_BROKEN_NICE_COMPILED variable holds the build result for this TRY_RUN().
++# 
++# Source file   : /gpfs/gpfs0/home/gevecb/alex/src/python-svn/build-bgl/CMakeFiles/CMakeTmp/src.c
++# Executable    : /gpfs/gpfs0/home/gevecb/alex/src/python-svn/build-bgl/cmTryCompileExec-HAVE_BROKEN_NICE_EXITCODE
++# Run arguments : 
++#    Called from: [2]   /gpfs/gpfs0/home/gevecb/alex/src/python-svn/ConfigureChecks.cmake
++#                 [1]   /gpfs/gpfs0/home/gevecb/alex/src/python-svn/CMakeLists.txt
++
++SET( HAVE_BROKEN_NICE_EXITCODE 
++     "0"
++     CACHE STRING "Result from TRY_RUN" FORCE)
++
++
++# HAVE_BROKEN_POLL_EXITCODE
++#    indicates whether the executable would have been able to run on its
++#    target platform. If so, set HAVE_BROKEN_POLL_EXITCODE to
++#    the exit code (in many cases 0 for success), otherwise enter "FAILED_TO_RUN".
++# The HAVE_BROKEN_POLL_COMPILED variable holds the build result for this TRY_RUN().
++# 
++# Source file   : /gpfs/gpfs0/home/gevecb/alex/src/python-svn/build-bgl/CMakeFiles/CMakeTmp/src.c
++# Executable    : /gpfs/gpfs0/home/gevecb/alex/src/python-svn/build-bgl/cmTryCompileExec-HAVE_BROKEN_POLL_EXITCODE
++# Run arguments : 
++#    Called from: [2]   /gpfs/gpfs0/home/gevecb/alex/src/python-svn/ConfigureChecks.cmake
++#                 [1]   /gpfs/gpfs0/home/gevecb/alex/src/python-svn/CMakeLists.txt
++
++SET( HAVE_BROKEN_POLL_EXITCODE 
++     "1"
++     CACHE STRING "Result from TRY_RUN" FORCE)
++
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+new file mode 100644
+index 0000000..79503b9
+--- /dev/null
++++ b/CMakeLists.txt
+@@ -0,0 +1,347 @@
++cmake_minimum_required(VERSION 2.4.5 FATAL_ERROR)
++
++project(Python)
++
++# user configurable options
++
++option(WITH_TSC "profile with the Pentium timestamp counter" 0)
++option(ENABLE_IPV6 "Enable IP v6" 1)
++option(WITH_DOC_STRINGS "Enable if you want documentation strings in extension modules" 1)
++option(Py_USING_UNICODE "Enable unicode support" 1)
++option(Py_DEBUG "Build debugging interpreter" 0)
++option(WITH_PYMALLOC "Define if you want to compile in Python-specific mallocs" 1)
++option(HAVE_LARGEFILE_SUPPORT "Large file support "1)
++option(WITH_THREAD "compile in rudimentary thread support" 1)
++
++set(PY_MAJOR 2)
++set(PY_MINOR 5)
++set(PY_PATCH 2)
++
++# do the configure checks
++
++include(ConfigureChecks.cmake)
++
++
++set(extraLibs)
++
++set(THREAD_SRC)
++if(WITH_THREAD)
++  if(HAVE_LIBPTHREAD)
++    set(THREAD_SRC Python/thread.c)
++    set(_REENTRANT 1)
++    set(extraLibs ${extraLibs} ${HAVE_LIBPTHREAD})
++  endif(HAVE_LIBPTHREAD)
++  if(WIN32)
++    set(THREAD_SRC Python/thread.c)
++  endif(WIN32)
++endif(WITH_THREAD)
++
++if(HAVE_LIBM)
++  set(extraLibs ${extraLibs} ${HAVE_LIBM})
++endif(HAVE_LIBM)
++
++if(HAVE_LIBUTIL)
++  set(extraLibs ${extraLibs} ${HAVE_LIBUTIL})
++endif(HAVE_LIBUTIL)
++
++set(DYNLOAD_SRC)
++if(HAVE_DYNAMIC_LOADING)
++  if(HAVE_LIBDL)
++    set(extraLibs ${extraLibs} ${HAVE_LIBDL})
++    set(DYNLOAD_SRC ${DYNLOAD_SRC} Python/dynload_shlib.c)
++  endif(HAVE_LIBDL)
++  if(WIN32)
++    set(DYNLOAD_SRC ${DYNLOAD_SRC} Python/dynload_win.c PC/import_nt.c PC/dl_nt.c)
++  endif(WIN32)
++  set(BUILD_LIBS_SHARED_DEFAULT TRUE)
++else(HAVE_DYNAMIC_LOADING)
++  set(BUILD_LIBS_SHARED_DEFAULT FALSE)
++endif(HAVE_DYNAMIC_LOADING)
++
++option(PYTHON_BUILD_LIB_SHARED "Build libpython shared" ${BUILD_LIBS_SHARED_DEFAULT})
++if(PYTHON_BUILD_LIB_SHARED)
++  set(LIB_BUILD_TYPE SHARED)
++else(PYTHON_BUILD_LIB_SHARED)
++  set(LIB_BUILD_TYPE STATIC)
++endif(PYTHON_BUILD_LIB_SHARED)
++
++set(MACHDEP_SRCS )   #TODO: configure
++
++set(SIGNAL_SRCS )    #TODO: configure
++
++set(MOD_SRCS )
++
++
++#####################################
++#
++# setup modules
++#
++#####################################
++
++set(STATIC_MODULES)
++set(DYNAMIC_MODULES)
++
++macro(ADD_PYTHON_MODULE _NAME _STATIC_SRCS)
++  option(MODULE_${_NAME}_ENABLE "Add module ${_NAME}" TRUE)
++
++  if(MODULE_${_NAME}_ENABLE)
++    option(MODULE_${_NAME}_SHARED "Add module ${_NAME} shared" ${BUILD_LIBS_SHARED_DEFAULT})
++    if(MODULE_${_NAME}_SHARED)
++      message(STATUS "Adding ${_NAME} as shared module")
++      set(DYNAMIC_MODULES ${DYNAMIC_MODULES} ${_NAME})
++      add_library(${_NAME} MODULE ${ARGN})
++      set_target_properties(${_NAME} PROPERTIES PREFIX "")
++    else(MODULE_${_NAME}_SHARED)
++      message(STATUS "Adding ${_NAME} as static module")
++      set(STATIC_MODULES ${STATIC_MODULES} ${_NAME})
++      set(${_STATIC_SRCS} ${${_STATIC_SRCS}} ${ARGN})
++      set(PY_STATIC_MODULES_INIT_FUNCTIONS "${PY_STATIC_MODULES_INIT_FUNCTIONS}extern void init${_NAME}(void);\n")
++      set(PY_STATIC_MODULES_INITTAB        "${PY_STATIC_MODULES_INITTAB}  {\"${_NAME}\", init${_NAME}},\n")
++    endif(MODULE_${_NAME}_SHARED)
++  endif(MODULE_${_NAME}_ENABLE)
++endmacro(ADD_PYTHON_MODULE)
++
++if(WITH_THREAD)
++  add_python_module(thread  MOD_SRCS Modules/threadmodule.c)
++endif(WITH_THREAD)
++
++if(WIN32)
++  set(PY_POSIX_NAME nt)
++else(WIN32)
++  set(PY_POSIX_NAME posix)
++endif(WIN32)
++
++add_python_module(${PY_POSIX_NAME}  MOD_SRCS Modules/posixmodule.c)
++#add_python_module(signal    MOD_SRCS Modules/signalmodule.c)
++add_python_module(_codecs   MOD_SRCS Modules/_codecsmodule.c)
++add_python_module(_sre      MOD_SRCS Modules/_sre.c)
++add_python_module(_weakref  MOD_SRCS Modules/_weakref.c)
++add_python_module(errno     MOD_SRCS Modules/errnomodule.c)
++add_python_module(pwd       MOD_SRCS Modules/pwdmodule.c)
++add_python_module(_symtable MOD_SRCS Modules/symtablemodule.c)
++add_python_module(xxsubtype MOD_SRCS Modules/xxsubtype.c)
++add_python_module(zipimport MOD_SRCS Modules/zipimport.c)
++
++option(BUILD_UNTESTED_MODULES "Build extra modules" FALSE)
++if(BUILD_UNTESTED_MODULES)
++  add_python_module(_bisect       MOD_SRCS Modules/_bisectmodule.c )
++  add_python_module(_bsddb        MOD_SRCS Modules/_bsddb.c )
++  add_python_module(_collections  MOD_SRCS Modules/_collectionsmodule.c )
++  add_python_module(_csv          MOD_SRCS Modules/_csv.c )
++  add_python_module(_elementtree  MOD_SRCS Modules/_elementtree.c )
++  add_python_module(_functools    MOD_SRCS Modules/_functoolsmodule.c )
++  add_python_module(_heapq        MOD_SRCS Modules/_heapqmodule.c )
++  add_python_module(_hotshot      MOD_SRCS Modules/_hotshot.c )
++  add_python_module(_locale       MOD_SRCS Modules/_localemodule.c )
++  add_python_module(_lsprof       MOD_SRCS Modules/_lsprof.c )
++  add_python_module(_random       MOD_SRCS Modules/_randommodule.c )
++  add_python_module(_struct       MOD_SRCS Modules/_struct.c )
++  add_python_module(array         MOD_SRCS Modules/arraymodule.c )
++  add_python_module(binascii      MOD_SRCS Modules/binascii.c )
++  add_python_module(cmath         MOD_SRCS Modules/cmathmodule.c )
++  add_python_module(datetime      MOD_SRCS Modules/datetimemodule.c )
++  add_python_module(dl            MOD_SRCS Modules/dlmodule.c )
++  add_python_module(fcntl         MOD_SRCS Modules/fcntlmodule.c )
++  add_python_module(grp           MOD_SRCS Modules/grpmodule.c )
++  add_python_module(imageop       MOD_SRCS Modules/imageop.c )
++  add_python_module(math          MOD_SRCS Modules/mathmodule.c )
++  add_python_module(operator      MOD_SRCS Modules/operator.c )
++  add_python_module(parser        MOD_SRCS Modules/parsermodule.c )
++endif(BUILD_UNTESTED_MODULES)
++
++
++file(MAKE_DIRECTORY ${Python_BINARY_DIR}/Modules)
++if(WIN32)
++  configure_file(PC/pyconfig.h ${Python_BINARY_DIR}/pyconfig.h COPYONLY)
++else(WIN32)
++  configure_file(pyconfig.h.cmake ${Python_BINARY_DIR}/pyconfig.h @ONLY)
++endif(WIN32)
++configure_file(Modules/config.c.cmake ${CMAKE_CURRENT_BINARY_DIR}/Modules/modules-config.c @ONLY)
++file(WRITE ${Python_BINARY_DIR}/Modules/Setup "#created by cmake, do not edit\n")
++
++
++#####################################
++#
++# build python and libpython
++# 
++#####################################
++
++set(P_SRCS      Parser/acceler.c
++                Parser/grammar1.c
++                Parser/listnode.c
++                Parser/node.c
++                Parser/parser.c
++                Parser/parsetok.c
++                Parser/bitset.c
++                Parser/metagrammar.c
++                Parser/firstsets.c
++                Parser/grammar.c
++                Parser/pgen.c )
++
++set(PARSER_SRCS ${P_SRCS} Parser/myreadline.c Parser/tokenizer.c )
++
++set(OBJECT_SRCS Objects/abstract.c
++                Objects/boolobject.c
++                Objects/bufferobject.c
++                Objects/cellobject.c
++                Objects/classobject.c
++                Objects/cobject.c
++                Objects/codeobject.c
++                Objects/complexobject.c
++                Objects/descrobject.c
++                Objects/enumobject.c
++                Objects/exceptions.c
++                Objects/genobject.c
++                Objects/fileobject.c
++                Objects/floatobject.c
++                Objects/frameobject.c
++                Objects/funcobject.c
++                Objects/intobject.c
++                Objects/iterobject.c
++                Objects/listobject.c
++                Objects/longobject.c
++                Objects/dictobject.c
++                Objects/methodobject.c
++                Objects/moduleobject.c
++                Objects/object.c
++                Objects/obmalloc.c
++                Objects/rangeobject.c
++                Objects/setobject.c
++                Objects/sliceobject.c
++                Objects/stringobject.c
++                Objects/structseq.c
++                Objects/tupleobject.c
++                Objects/typeobject.c
++                Objects/weakrefobject.c
++   )
++
++if(Py_USING_UNICODE)
++   set(OBJECT_SRCS ${OBJECT_SRCS} 
++                   Objects/unicodeobject.c 
++                   Objects/unicodectype.c)
++endif(Py_USING_UNICODE)
++
++set(PYTHON_SRCS Python/Python-ast.c 
++                Python/asdl.c 
++                Python/ast.c 
++                Python/bltinmodule.c 
++                Python/ceval.c 
++                Python/compile.c 
++                Python/codecs.c 
++                Python/errors.c 
++                Python/frozen.c 
++                Python/frozenmain.c 
++                Python/future.c 
++                Python/getargs.c 
++                Python/getcompiler.c 
++                Python/getcopyright.c 
++                Python/getmtime.c 
++                Python/getplatform.c 
++                Python/getversion.c 
++                Python/graminit.c 
++                Python/import.c 
++                Python/importdl.c 
++                Python/marshal.c 
++                Python/modsupport.c 
++                Python/mystrtoul.c 
++                Python/mysnprintf.c 
++                Python/pyarena.c 
++                Python/pyfpe.c 
++                Python/pystate.c 
++                Python/pythonrun.c 
++                Python/structmember.c 
++                Python/symtable.c 
++                Python/sysmodule.c 
++                Python/traceback.c 
++                Python/getopt.c 
++                Python/pystrtod.c 
++                ${MACHDEP_SRCS}
++                ${THREAD_SRC}
++                ${DYNLOAD_SRC}
++                )
++
++set(MODULE_SRCS ${CMAKE_CURRENT_BINARY_DIR}/Modules/modules-config.c 
++                Modules/getbuildinfo.c 
++                Modules/_typesmodule.c
++                Modules/getpath.c 
++                Modules/main.c 
++                Modules/gcmodule.c  
++                Modules/signalmodule.c  
++                ${MOD_SRCS} )
++
++set_source_files_properties(Python/getplatform.c PROPERTIES COMPILE_FLAGS -DPLATFORM=\\"${PY_PLATFORM}\\")
++set_source_files_properties(Modules/getpath.c PROPERTIES COMPILE_FLAGS  "-DPREFIX=\\\"${CMAKE_INSTALL_PREFIX}\\\" -DEXEC_PREFIX=\\\"${CMAKE_INSTALL_PREFIX}\\\" -DVERSION=\\\"${PY_MAJOR}.${PY_MINOR}\\\" -DVPATH=\\\"..\\\"  -DPYTHONPATH=\\\":plat-${PY_PLATFORM}\\\" " )
++
++include_directories(Include ${Python_BINARY_DIR})
++if(WIN32)
++  include_directories(PC Python)
++  add_definitions(-DWIN32 -D_WINDOWS)
++endif(WIN32)
++
++add_definitions(-DPy_BUILD_CORE)
++
++if(NOT HAVE_HYPOT)
++  add_definitions(-DWITHOUT_COMPLEX)
++endif(NOT HAVE_HYPOT)
++
++
++add_library(pythonLib  ${LIB_BUILD_TYPE}
++              ${PARSER_SRCS}
++              ${OBJECT_SRCS}
++              ${PYTHON_SRCS}
++              ${MODULE_SRCS}
++              ${SIGNAL_SRCS}
++              )
++
++target_link_libraries(pythonLib ${extraLibs})
++set_target_properties(pythonLib PROPERTIES OUTPUT_NAME python${PY_MAJOR}.${PY_MINOR})
++
++add_executable(python Modules/python.c )
++target_link_libraries(python pythonLib)
++
++#if(CMAKE_SYSTEM MATCHES BlueGene)
++#  get_target_property(EXE_LOCATION python LOCATION)
++#  configure_file(runcone.ksh.in ${CMAKE_CURRENT_BINARY_DIR}/runpy.ksh)
++#endif(CMAKE_SYSTEM MATCHES BlueGene)
++
++add_subdirectory(Lib)
++
++
++#####################################
++#
++# install rules
++#
++#####################################
++
++install(TARGETS python pythonLib 
++        RUNTIME DESTINATION bin
++        LIBRARY DESTINATION lib
++        ARCHIVE DESTINATION lib)
++
++# install the python headers
++file(GLOB pyHeaders ${Python_SOURCE_DIR}/Include/*.h )
++install(FILES ${Python_BINARY_DIR}/pyconfig.h ${pyHeaders} DESTINATION include/python${PY_MAJOR}.${PY_MINOR})
++
++# install the dynamic python modules
++if(DYNAMIC_MODULES)
++  install(TARGETS ${DYNAMIC_MODULES} DESTINATION lib/python${PY_MAJOR}.${PY_MINOR}/lib-dynload )
++endif(DYNAMIC_MODULES)
++
++# install the python config tool
++set(EXENAME ${CMAKE_INSTALL_PREFIX}/bin/python)
++configure_file(Misc/python-config.in ${CMAKE_CURRENT_BINARY_DIR}/python${PY_MAJOR}.${PY_MINOR}-config @ONLY)
++install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/python${PY_MAJOR}.${PY_MINOR}-config DESTINATION bin)
++
++# man pages
++install(FILES Misc/python.man DESTINATION man/man1 RENAME python.1)
++
++install(FILES LICENSE DESTINATION lib/python${PY_MAJOR}.${PY_MINOR} RENAME LICENSE.txt)
++
++
++#####################################
++#
++# setup packaging with CPack
++#
++#####################################
++
++include(PythonCPack.cmake)
+diff --git a/ConfigureChecks.cmake b/ConfigureChecks.cmake
+new file mode 100644
+index 0000000..1012a4f
+--- /dev/null
++++ b/ConfigureChecks.cmake
+@@ -0,0 +1,732 @@
++include(CheckCSourceCompiles)
++include(CheckCSourceRuns)
++include(CheckIncludeFiles)
++include(CheckTypeSize)
++include(CheckSymbolExists)
++include(CheckVariableExists)
++include(CMake/MacroPushRequiredVars.cmake)
++include(CMake/CheckStructHasMember.cmake)
++include(CMake/CheckTypeExists.cmake)
++
++if(WIN32)
++  set(HAVE_DYNAMIC_LOADING 1)
++
++else(WIN32)
++
++
++
++macro(ADD_COND var cond item)
++  if(${cond})
++    set(${var} ${${var}} ${item})
++  endif(${cond})
++endmacro(ADD_COND)
++
++check_include_files(asm/types.h HAVE_ASM_TYPES_H)
++check_include_files(arpa/inet.h HAVE_ARPA_INET_H)
++check_include_files(bluetooth/bluetooth.h HAVE_BLUETOOTH_BLUETOOTH_H)
++check_include_files(bluetooth.h HAVE_BLUETOOTH_H)
++check_include_files(conio.h HAVE_CONIO_H)
++check_include_files(curses.h HAVE_CURSES_H)
++check_include_files(direct.h HAVE_DIRECT_H)
++check_include_files(dirent.h HAVE_DIRENT_H)
++check_include_files(dlfcn.h HAVE_DLFCN_H)
++check_include_files(errno.h HAVE_ERRNO_H)
++check_include_files(fcntl.h HAVE_FCNTL_H)
++check_include_files(grp.h HAVE_GRP_H)
++check_include_files(inttypes.h HAVE_INTTYPES_H)
++check_include_files(io.h HAVE_IO_H)
++check_include_files(langinfo.h HAVE_LANGINFO_H)
++check_include_files(libintl.h HAVE_LIBINTL_H)
++check_include_files(libutil.h HAVE_LIBUTIL_H)
++check_include_files(locale.h HAVE_LOCALE_H)
++
++check_include_files(sys/socket.h HAVE_SYS_SOCKET_H)
++
++set(LINUX_NETLINK_HEADERS)
++add_cond(LINUX_NETLINK_HEADERS HAVE_ASM_TYPES_H  asm/types.h)
++add_cond(LINUX_NETLINK_HEADERS HAVE_SYS_SOCKET_H sys/socket.h)
++set(LINUX_NETLINK_HEADERS ${LINUX_NETLINK_HEADERS} linux/netlink.h)
++check_include_files("${LINUX_NETLINK_HEADERS}" HAVE_LINUX_NETLINK_H)
++
++check_include_files(memory.h HAVE_MEMORY_H)
++check_include_files(ncurses.h HAVE_NCURSES_H)
++check_include_files(ndir.h HAVE_NDIR_H)
++check_include_files(netdb.h HAVE_NETDB_H)
++check_include_files(netinet/in.h HAVE_NETINET_IN_H)
++check_include_files(netpacket/packet.h HAVE_NETPACKET_PACKET_H)
++check_include_files(poll.h HAVE_POLL_H)
++check_include_files(process.h HAVE_PROCESS_H)
++check_include_files(pthread.h HAVE_PTHREAD_H)
++check_include_files(pty.h HAVE_PTY_H)
++check_include_files(pwd.h HAVE_PWD_H)
++check_include_files(readline/readline.h HAVE_READLINE_READLINE_H)
++check_include_files(shadow.h HAVE_SHADOW_H)
++check_include_files(signal.h HAVE_SIGNAL_H)
++check_include_files(stdint.h HAVE_STDINT_H)
++check_include_files(stdlib.h HAVE_STDLIB_H)
++check_include_files(strings.h HAVE_STRINGS_H)
++check_include_files(string.h HAVE_STRING_H)
++check_include_files(stropts.h HAVE_STROPTS_H)
++check_include_files(sysexits.h HAVE_SYSEXITS_H)
++check_include_files(sys/audioio.h HAVE_SYS_AUDIOIO_H)
++check_include_files(sys/bsdtty.h HAVE_SYS_BSDTTY_H)
++check_include_files(sys/file.h HAVE_SYS_FILE_H)
++check_include_files(sys/loadavg.h HAVE_SYS_LOADAVG_H)
++check_include_files(sys/lock.h HAVE_SYS_LOCK_H)
++check_include_files(sys/mkdev.h HAVE_SYS_MKDEV_H)
++check_include_files(sys/mman.h HAVE_SYS_MMAN_H)
++check_include_files(sys/modem.h HAVE_SYS_MODEM_H)
++check_include_files(sys/ndir.h HAVE_SYS_NDIR_H)
++check_include_files(sys/param.h HAVE_SYS_PARAM_H)
++check_include_files(sys/poll.h HAVE_SYS_POLL_H)
++check_include_files(sys/resource.h HAVE_SYS_RESOURCE_H)
++check_include_files(sys/select.h HAVE_SYS_SELECT_H)
++check_include_files(sys/statvfs.h HAVE_SYS_STATVFS_H)
++check_include_files(sys/stat.h HAVE_SYS_STAT_H)
++check_include_files(sys/timeb.h HAVE_SYS_TIMEB_H)
++check_include_files(sys/times.h HAVE_SYS_TIMES_H)
++check_include_files(sys/time.h HAVE_SYS_TIME_H)
++check_include_files(sys/types.h HAVE_SYS_TYPES_H)
++check_include_files(sys/un.h HAVE_SYS_UN_H)
++check_include_files(sys/utsname.h HAVE_SYS_UTSNAME_H)
++check_include_files(sys/wait.h HAVE_SYS_WAIT_H)
++check_include_files(termios.h HAVE_TERMIOS_H)
++check_include_files(term.h HAVE_TERM_H)
++check_include_files(thread.h HAVE_THREAD_H)
++check_include_files(unistd.h HAVE_UNISTD_H)
++check_include_files(utime.h HAVE_UTIME_H)
++check_include_files(wchar.h HAVE_WCHAR_H)
++check_include_files("stdlib.h;stdarg.h;string.h;float.h" STDC_HEADERS)
++
++check_include_files(stdarg.h HAVE_STDARG_PROTOTYPES)
++
++find_file(HAVE_DEV_PTMX NAMES /dev/ptmx PATHS / NO_DEFAULT_PATH)
++find_file(HAVE_DEV_PTC  NAMES /dev/ptc  PATHS / NO_DEFAULT_PATH)
++message(STATUS "ptmx: ${HAVE_DEV_PTMX} ptc: ${HAVE_DEV_PTC}")
++
++find_library(HAVE_LIBCURSES curses)
++find_library(HAVE_LIBDL dl)
++find_library(HAVE_LIBDLD dld)
++find_library(HAVE_LIBIEEE ieee)
++find_library(HAVE_LIBINTL intl)
++find_library(HAVE_LIBM m)
++find_library(HAVE_LIBNCURSES ncurses)
++find_library(HAVE_LIBPTHREAD pthread)
++find_library(HAVE_LIBREADLINE readline)
++find_library(HAVE_LIBRESOLV resolv)
++find_library(HAVE_LIBTERMCAP termcap)
++find_library(HAVE_LIBUTIL    util)
++
++set(CMAKE_REQUIRED_DEFINITIONS -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE=1 -D_BSD_TYPES=1 -DNETBSD_SOURCE=1 -D__BSD_VISIBLE=1)
++set(CMAKE_EXTRA_INCLUDE_FILES stdio.h)
++
++add_cond(CMAKE_REQUIRED_LIBRARIES HAVE_LIBM m)
++add_cond(CMAKE_REQUIRED_LIBRARIES HAVE_LIBINTL intl)
++add_cond(CMAKE_REQUIRED_LIBRARIES HAVE_LIBUTIL util)
++add_cond(CMAKE_EXTRA_INCLUDE_FILES HAVE_WCHAR_H wchar.h)
++
++check_type_size(double SIZEOF_DOUBLE)
++check_type_size(float SIZEOF_FLOAT)
++check_type_size(fpos_t SIZEOF_FPOS_T)
++check_type_size(int SIZEOF_INT)
++check_type_size(long SIZEOF_LONG)
++check_type_size("long long" SIZEOF_LONG_LONG)
++set(HAVE_LONG_LONG ${SIZEOF_LONG_LONG})
++check_type_size(off_t SIZEOF_OFF_T)
++check_type_size(pthread_t SIZEOF_PTHREAD_T)
++check_type_size(short SIZEOF_SHORT)
++check_type_size(size_t SIZEOF_SIZE_T)
++check_type_size(ssize_t HAVE_SSIZE_T)
++check_type_size(time_t SIZEOF_TIME_T)
++check_type_size(uintptr_t SIZEOF_UINTPTR_T)
++set(HAVE_UINTPTR_T ${SIZEOF_UINTPTR_T})
++check_type_size("void *" SIZEOF_VOID_P)
++check_type_size(wchar_t SIZEOF_WCHAR_T)
++check_type_size(_Bool SIZEOF__BOOL)
++set(HAVE_C99_BOOL ${SIZEOF__BOOL})
++
++set(_LARGEFILE_SOURCE 1)
++set(_FILE_OFFSET_BITS 64)
++
++set(_NETBSD_SOURCE 1)
++set(__BSD_VISIBLE 1)
++set(_BSD_SOURCE 1)
++set(_BSD_TYPES 1)
++set(_GNU_SOURCE 1)
++set(_XOPEN_SOURCE 600)
++set(_XOPEN_SOURCE_EXTENDED 1)
++set(_POSIX_C_SOURCE 200112L)
++
++set(AIX_GENUINE_CPLUSPLUS 0)
++
++set(WITH_DYLD 0)
++set(WITH_NEXT_FRAMEWORK 0)
++if(APPLE)
++  set(WITH_DYLD 1)
++  set(WITH_NEXT_FRAMEWORK 1)
++endif(APPLE)
++
++
++set(CFG_HEADERS )
++
++add_cond(CFG_HEADERS HAVE_SYS_TYPES_H sys/types.h)
++add_cond(CFG_HEADERS HAVE_SYS_TIME_H sys/time.h)
++add_cond(CFG_HEADERS HAVE_SYS_FILE_H sys/file.h)
++add_cond(CFG_HEADERS HAVE_SYS_POLL_H sys/poll.h)
++add_cond(CFG_HEADERS HAVE_SYS_STATVFS_H sys/statvfs.h)
++add_cond(CFG_HEADERS HAVE_SYS_STAT_H sys/stat.h)
++add_cond(CFG_HEADERS HAVE_SYS_LOCK_H sys/lock.h)
++add_cond(CFG_HEADERS HAVE_SYS_TIMEB_H sys/timeb.h)
++add_cond(CFG_HEADERS HAVE_SYS_TIMES_H sys/times.h)
++add_cond(CFG_HEADERS HAVE_SYS_UTSNAME_H sys/utsname.h)
++add_cond(CFG_HEADERS HAVE_SYS_MMAN_H sys/mman.h)
++add_cond(CFG_HEADERS HAVE_SYS_SOCKET_H sys/socket.h)
++add_cond(CFG_HEADERS HAVE_SYS_WAIT_H sys/wait.h)
++add_cond(CFG_HEADERS HAVE_PWD_H pwd.h)
++add_cond(CFG_HEADERS HAVE_GRP_H grp.h)
++add_cond(CFG_HEADERS HAVE_SHADOW_H shadow.h)
++add_cond(CFG_HEADERS HAVE_LOCALE_H locale.h)
++add_cond(CFG_HEADERS HAVE_LIBINTL_H libintl.h)
++add_cond(CFG_HEADERS HAVE_FCNTL_H fcntl.h)
++add_cond(CFG_HEADERS HAVE_SIGNAL_H signal.h)
++add_cond(CFG_HEADERS HAVE_STDLIB_H stdlib.h)
++add_cond(CFG_HEADERS HAVE_STRING_H string.h)
++add_cond(CFG_HEADERS HAVE_UNISTD_H unistd.h)
++add_cond(CFG_HEADERS HAVE_UTIME_H utime.h)
++add_cond(CFG_HEADERS HAVE_WCHAR_H wchar.h)
++
++if(HAVE_PTY_H)
++  set(CFG_HEADERS ${CFG_HEADERS} pty.h utmp.h)
++endif(HAVE_PTY_H)
++
++set(CFG_HEADERS ${CFG_HEADERS} time.h stdio.h math.h)
++
++check_symbol_exists(alarm        "${CFG_HEADERS}" HAVE_ALARM)
++check_symbol_exists(altzone      "${CFG_HEADERS}" HAVE_ALTZONE)
++check_symbol_exists(bind_textdomain_codeset "${CFG_HEADERS}" HAVE_BIND_TEXTDOMAIN_CODESET)
++check_symbol_exists(chflags      "${CFG_HEADERS}" HAVE_CHFLAGS)
++check_symbol_exists(chown        "${CFG_HEADERS}" HAVE_CHOWN)
++check_symbol_exists(chroot       "${CFG_HEADERS}" HAVE_CHROOT)
++check_symbol_exists(clock        "${CFG_HEADERS}" HAVE_CLOCK)
++check_symbol_exists(confstr      "${CFG_HEADERS}" HAVE_CONFSTR)
++check_symbol_exists(ctermid      "${CFG_HEADERS}" HAVE_CTERMID)
++check_symbol_exists(ctermid_r    "${CFG_HEADERS}" HAVE_CTERMID_R)
++check_symbol_exists(dup2         "${CFG_HEADERS}" HAVE_DUP2)
++check_symbol_exists(execv        "${CFG_HEADERS}" HAVE_EXECV)
++check_symbol_exists(fchdir       "${CFG_HEADERS}" HAVE_FCHDIR)
++check_symbol_exists(fdatasync    "${CFG_HEADERS}" HAVE_FDATASYNC)
++check_symbol_exists(flock        "${CFG_HEADERS}" HAVE_FLOCK)
++check_symbol_exists(fork         "${CFG_HEADERS}" HAVE_FORK)
++check_symbol_exists(forkpty      "${CFG_HEADERS}" HAVE_FORKPTY)
++check_symbol_exists(fpathconf    "${CFG_HEADERS}" HAVE_FPATHCONF)
++check_symbol_exists(fseek64      "${CFG_HEADERS}" HAVE_FSEEK64)
++check_symbol_exists(fseeko       "${CFG_HEADERS}" HAVE_FSEEKO)
++check_symbol_exists(fstatvfs     "${CFG_HEADERS}" HAVE_FSTATVFS)
++check_symbol_exists(fsync        "${CFG_HEADERS}" HAVE_FSYNC)
++check_symbol_exists(ftell64      "${CFG_HEADERS}" HAVE_FTELL64)
++check_symbol_exists(ftello       "${CFG_HEADERS}" HAVE_FTELLO)
++check_symbol_exists(ftime        "${CFG_HEADERS}" HAVE_FTIME)
++check_symbol_exists(ftruncate    "${CFG_HEADERS}" HAVE_FTRUNCATE)
++check_symbol_exists(getcwd       "${CFG_HEADERS}" HAVE_GETCWD)
++check_symbol_exists(getc_unlocked   "${CFG_HEADERS}" HAVE_GETC_UNLOCKED)
++check_symbol_exists(getgroups       "${CFG_HEADERS}" HAVE_GETGROUPS)
++check_symbol_exists(getloadavg   "${CFG_HEADERS}" HAVE_GETLOADAVG)
++check_symbol_exists(getlogin     "${CFG_HEADERS}" HAVE_GETLOGIN)
++check_symbol_exists(getpagesize  "${CFG_HEADERS}" HAVE_GETPAGESIZE)
++check_symbol_exists(getpgid      "${CFG_HEADERS}" HAVE_GETPGID)
++check_symbol_exists(getpgrp      "${CFG_HEADERS}" HAVE_GETPGRP)
++check_symbol_exists(getpid       "${CFG_HEADERS}" HAVE_GETPID)
++check_symbol_exists(getpriority  "${CFG_HEADERS}" HAVE_GETPRIORITY)
++check_symbol_exists(getpwent     "${CFG_HEADERS}" HAVE_GETPWENT)
++check_symbol_exists(getsid       "${CFG_HEADERS}" HAVE_GETSID)
++check_symbol_exists(getspent     "${CFG_HEADERS}" HAVE_GETSPENT)
++check_symbol_exists(getspnam     "${CFG_HEADERS}" HAVE_GETSPNAM)
++check_symbol_exists(gettimeofday "${CFG_HEADERS}" HAVE_GETTIMEOFDAY)
++check_symbol_exists(getwd        "${CFG_HEADERS}" HAVE_GETWD)
++check_symbol_exists(hypot        "${CFG_HEADERS}" HAVE_HYPOT)
++check_symbol_exists(kill         "${CFG_HEADERS}" HAVE_KILL)
++check_symbol_exists(killpg       "${CFG_HEADERS}" HAVE_KILLPG)
++check_symbol_exists(lchflags     "${CFG_HEADERS}" HAVE_LCHFLAGS)
++check_symbol_exists(lchown       "${CFG_HEADERS}" HAVE_LCHOWN)
++check_symbol_exists(link         "${CFG_HEADERS}" HAVE_LINK)
++check_symbol_exists(lstat        "${CFG_HEADERS}" HAVE_LSTAT)
++check_symbol_exists(makedev      "${CFG_HEADERS}" HAVE_MAKEDEV)
++check_symbol_exists(memmove      "${CFG_HEADERS}" HAVE_MEMMOVE)
++check_symbol_exists(mkfifo       "${CFG_HEADERS}" HAVE_MKFIFO)
++check_symbol_exists(mknod        "${CFG_HEADERS}" HAVE_MKNOD)
++check_symbol_exists(mktime       "${CFG_HEADERS}" HAVE_MKTIME)
++check_symbol_exists(mremap       "${CFG_HEADERS}" HAVE_MREMAP)
++check_symbol_exists(nice         "${CFG_HEADERS}" HAVE_NICE)
++check_symbol_exists(openpty      "${CFG_HEADERS}" HAVE_OPENPTY)
++check_symbol_exists(pathconf     "${CFG_HEADERS}" HAVE_PATHCONF)
++check_symbol_exists(pause        "${CFG_HEADERS}" HAVE_PAUSE)
++check_symbol_exists(plock        "${CFG_HEADERS}" HAVE_PLOCK)
++check_symbol_exists(poll         "${CFG_HEADERS}" HAVE_POLL)
++check_symbol_exists(putenv       "${CFG_HEADERS}" HAVE_PUTENV)
++check_symbol_exists(readlink     "${CFG_HEADERS}" HAVE_READLINK)
++check_symbol_exists(realpath     "${CFG_HEADERS}" HAVE_REALPATH)
++check_symbol_exists(select       "${CFG_HEADERS}" HAVE_SELECT)
++check_symbol_exists(setegid      "${CFG_HEADERS}" HAVE_SETEGID)
++check_symbol_exists(seteuid      "${CFG_HEADERS}" HAVE_SETEUID)
++check_symbol_exists(setgid       "${CFG_HEADERS}" HAVE_SETGID)
++check_symbol_exists(setgroups    "${CFG_HEADERS}" HAVE_SETGROUPS)
++check_symbol_exists(setlocale    "${CFG_HEADERS}" HAVE_SETLOCALE)
++check_symbol_exists(setpgid      "${CFG_HEADERS}" HAVE_SETPGID)
++check_symbol_exists(setpgrp      "${CFG_HEADERS}" HAVE_SETPGRP)
++check_symbol_exists(setregid     "${CFG_HEADERS}" HAVE_SETREGID)
++check_symbol_exists(setreuid     "${CFG_HEADERS}" HAVE_SETREUID)
++check_symbol_exists(setsid       "${CFG_HEADERS}" HAVE_SETSID)
++check_symbol_exists(setuid       "${CFG_HEADERS}" HAVE_SETUID)
++check_symbol_exists(setvbuf      "${CFG_HEADERS}" HAVE_SETVBUF)
++check_symbol_exists(sigaction    "${CFG_HEADERS}" HAVE_SIGACTION)
++check_symbol_exists(siginterrupt "${CFG_HEADERS}" HAVE_SIGINTERRUPT)
++check_symbol_exists(sigrelse     "${CFG_HEADERS}" HAVE_SIGRELSE)
++check_symbol_exists(snprintf     "${CFG_HEADERS}" HAVE_SNPRINTF)
++check_symbol_exists(socketpair   "${CFG_HEADERS}" HAVE_SOCKETPAIR)
++check_symbol_exists(statvfs      "${CFG_HEADERS}" HAVE_STATVFS)
++check_symbol_exists(strdup       "${CFG_HEADERS}" HAVE_STRDUP)
++check_symbol_exists(strerror     "${CFG_HEADERS}" HAVE_STRERROR)
++check_symbol_exists(strftime     "${CFG_HEADERS}" HAVE_STRFTIME)
++check_symbol_exists(symlink      "${CFG_HEADERS}" HAVE_SYMLINK)
++check_symbol_exists(sysconf      "${CFG_HEADERS}" HAVE_SYSCONF)
++check_symbol_exists(tcgetpgrp    "${CFG_HEADERS}" HAVE_TCGETPGRP)
++check_symbol_exists(tcsetpgrp    "${CFG_HEADERS}" HAVE_TCSETPGRP)
++check_symbol_exists(tempnam      "${CFG_HEADERS}" HAVE_TEMPNAM)
++check_symbol_exists(timegm       "${CFG_HEADERS}" HAVE_TIMEGM)
++check_symbol_exists(times        "${CFG_HEADERS}" HAVE_TIMES)
++check_symbol_exists(tmpfile      "${CFG_HEADERS}" HAVE_TMPFILE)
++check_symbol_exists(tmpnam       "${CFG_HEADERS}" HAVE_TMPNAM)
++check_symbol_exists(tmpnam_r     "${CFG_HEADERS}" HAVE_TMPNAM_R)
++check_symbol_exists(truncate     "${CFG_HEADERS}" HAVE_TRUNCATE)
++check_symbol_exists(uname        "${CFG_HEADERS}" HAVE_UNAME)
++check_symbol_exists(unsetenv     "${CFG_HEADERS}" HAVE_UNSETENV)
++check_symbol_exists(utimes       "${CFG_HEADERS}" HAVE_UTIMES)
++check_symbol_exists(wait3        "${CFG_HEADERS}" HAVE_WAIT3)
++check_symbol_exists(wait4        "${CFG_HEADERS}" HAVE_WAIT4)
++check_symbol_exists(waitpid      "${CFG_HEADERS}" HAVE_WAITPID)
++check_symbol_exists(wcscoll      "${CFG_HEADERS}" HAVE_WCSCOLL)
++check_symbol_exists(_getpty      "${CFG_HEADERS}" HAVE__GETPTY)
++
++check_type_exists(DIR sys/dir.h HAVE_SYS_DIR_H)
++
++check_struct_has_member("struct stat" st_mtim.tv_nsec "${CFG_HEADERS}" HAVE_STAT_TV_NSEC)
++check_struct_has_member("struct stat" st_mtimensec "${CFG_HEADERS}"    HAVE_STAT_TV_NSEC2)
++check_struct_has_member("struct stat" st_birthtime "${CFG_HEADERS}"    HAVE_STRUCT_STAT_ST_BIRTHTIME)
++check_struct_has_member("struct stat" st_blksize "${CFG_HEADERS}"    HAVE_STRUCT_STAT_ST_BLKSIZE)
++check_struct_has_member("struct stat" st_blocks  "${CFG_HEADERS}"    HAVE_STRUCT_STAT_ST_BLOCKS)
++set(HAVE_ST_BLOCKS ${HAVE_STRUCT_STAT_ST_BLOCKS})
++check_struct_has_member("struct stat" st_flags   "${CFG_HEADERS}"    HAVE_STRUCT_STAT_ST_FLAGS)
++check_struct_has_member("struct stat" st_gen     "${CFG_HEADERS}"    HAVE_STRUCT_STAT_ST_GEN)
++check_struct_has_member("struct stat" st_rdev    "${CFG_HEADERS}"    HAVE_STRUCT_STAT_ST_RDEV)
++
++
++#######################################################################
++#
++# time
++#
++#######################################################################
++check_struct_has_member("struct tm"   tm_zone    "${CFG_HEADERS}"    HAVE_STRUCT_TM_TM_ZONE)
++check_struct_has_member("struct tm"   tm_zone    "${CFG_HEADERS}"    HAVE_STRUCT_TM_TM_ZONE)
++set(HAVE_TM_ZONE ${HAVE_STRUCT_TM_TM_ZONE})
++
++if(NOT HAVE_STRUCT_TM_TM_ZONE)
++  check_variable_exists(tzname HAVE_TZNAME)
++else(NOT HAVE_STRUCT_TM_TM_ZONE)
++  set(HAVE_TZNAME 0)
++endif(NOT HAVE_STRUCT_TM_TM_ZONE)
++
++check_type_exists("struct tm" sys/time.h TM_IN_SYS_TIME)
++
++check_c_source_compiles("#include <sys/time.h>\n int main() {gettimeofday((struct timeval*)0,(struct timezone*)0);}" GETTIMEOFDAY_WITH_TZ)
++
++if(GETTIMEOFDAY_WITH_TZ)
++  set(GETTIMEOFDAY_NO_TZ 0)
++else(GETTIMEOFDAY_WITH_TZ)
++  set(GETTIMEOFDAY_NO_TZ 1)
++endif(GETTIMEOFDAY_WITH_TZ)
++
++#######################################################################
++#
++# unicode 
++#
++#######################################################################
++
++#ucs2
++set(PY_UNICODE_TYPE "unsigned short")
++set(HAVE_USABLE_WCHAR_T 0)
++set(Py_UNICODE_SIZE 2)
++
++if   ("${Py_UNICODE_SIZE}" STREQUAL "${SIZEOF_WCHAR_T}")
++  set(PY_UNICODE_TYPE wchar_t)
++  set(HAVE_USABLE_WCHAR_T 1)
++  message(STATUS "Using wchar_t for unicode")
++else ("${Py_UNICODE_SIZE}" STREQUAL "${SIZEOF_WCHAR_T}")
++
++  if   ("${Py_UNICODE_SIZE}" STREQUAL "${SIZEOF_SHORT}")
++    set(PY_UNICODE_TYPE "unsigned short")
++    set(HAVE_USABLE_WCHAR_T 0)
++    message(STATUS "Using unsigned short for unicode")
++  else ("${Py_UNICODE_SIZE}" STREQUAL "${SIZEOF_SHORT}")
++
++    if   ("${Py_UNICODE_SIZE}" STREQUAL "${SIZEOF_LONG}")
++      set(PY_UNICODE_TYPE "unsigned long")
++      set(HAVE_USABLE_WCHAR_T 0)
++      message(STATUS "Using unsigned long for unicode")
++    else ("${Py_UNICODE_SIZE}" STREQUAL "${SIZEOF_LONG}")
++
++      if(Py_USING_UNICODE)
++        message(SEND_ERROR "No usable unicode type found, disable Py_USING_UNICODE to be able to build Python")
++      else(Py_USING_UNICODE)
++        message(STATUS "No usable unicode type found")
++      endif(Py_USING_UNICODE)
++
++    endif("${Py_UNICODE_SIZE}" STREQUAL "${SIZEOF_LONG}")
++
++  endif("${Py_UNICODE_SIZE}" STREQUAL "${SIZEOF_SHORT}")
++
++endif("${Py_UNICODE_SIZE}" STREQUAL "${SIZEOF_WCHAR_T}")
++
++
++
++
++#######################################################################
++#
++# networking tests
++#
++#######################################################################
++macro_push_required_vars()
++set(CFG_HEADERS_SAVE ${CFG_HEADERS})
++add_cond(CFG_HEADERS HAVE_NETDB_H netdb.h)
++add_cond(CFG_HEADERS HAVE_NETDB_H netinet/in.h)
++add_cond(CFG_HEADERS HAVE_ARPA_INET_H arpa/inet.h)
++
++check_symbol_exists(gai_strerror    "${CFG_HEADERS}" HAVE_GAI_STRERROR)
++check_symbol_exists(getaddrinfo     "${CFG_HEADERS}" HAVE_GETADDRINFO)
++check_symbol_exists(gethostbyname   "${CFG_HEADERS}" HAVE_GETHOSTBYNAME)
++#check_symbol_exists(gethostbyname_r "${CFG_HEADERS}" HAVE_GETHOSTBYNAME_R) # see end of file
++check_symbol_exists(getnameinfo     "${CFG_HEADERS}" HAVE_GETNAMEINFO)
++check_symbol_exists(getpeername     "${CFG_HEADERS}" HAVE_GETPEERNAME)
++check_symbol_exists(hstrerror       "${CFG_HEADERS}" HAVE_HSTRERROR)
++check_symbol_exists(inet_aton       "${CFG_HEADERS}" HAVE_INET_ATON)
++check_symbol_exists(inet_pton       "${CFG_HEADERS}" HAVE_INET_PTON)
++
++check_type_exists("struct addrinfo" "${CFG_HEADERS}" HAVE_ADDRINFO)
++check_struct_has_member(sockaddr sa_len "${CFG_HEADERS}" HAVE_SOCKADDR_SA_LEN )
++check_type_exists("struct sockaddr_storage" "${CFG_HEADERS}" HAVE_SOCKADDR_STORAGE)
++
++set(CFG_HEADERS ${CFG_HEADERS_SAVE})
++macro_pop_required_vars()
++
++
++#######################################################################
++#
++# multithreading stuff
++#
++#######################################################################
++macro_push_required_vars()
++set(CFG_HEADERS_SAVE ${CFG_HEADERS})
++
++set(ATHEOS_THREADS 0)
++set(BEOS_THREADS 0)
++set(C_THREADS 0)
++set(HURD_C_THREADS 0)
++set(MACH_C_THREADS 0)
++set(HAVE_PTH 0) # GNU PTH threads
++
++set(HAVE_PTHREAD_DESTRUCTOR 0) # for Solaris 2.6
++add_cond(CFG_HEADERS  HAVE_PTHREAD_H  pthread.h)
++add_cond(CMAKE_REQUIRED_LIBRARIES  HAVE_LIBPTHREAD  ${HAVE_LIBPTHREAD})
++
++check_symbol_exists(pthread_init "${CFG_HEADERS}" HAVE_PTHREAD_INIT)
++check_symbol_exists(pthread_sigmask "${CFG_HEADERS}" HAVE_PTHREAD_SIGMASK)
++
++set(CFG_HEADERS ${CFG_HEADERS_SAVE})
++macro_pop_required_vars()
++
++if(CMAKE_SYSTEM MATCHES BlueGene)
++  set(WITH_THREAD OFF CACHE STRING "System doesn't support multithreading" FORCE)
++endif(CMAKE_SYSTEM MATCHES BlueGene)
++
++
++#######################################################################
++#
++# readline tests
++#
++#######################################################################
++if(HAVE_READLINE_READLINE_H)
++  macro_push_required_vars()
++  set(CFG_HEADERS_SAVE ${CFG_HEADERS})
++
++  add_cond(CFG_HEADERS HAVE_READLINE_READLINE_H readline/readline.h)
++  add_cond(CMAKE_REQUIRED_LIBRARIES HAVE_LIBREADLINE ${HAVE_LIBREADLINE})
++  check_symbol_exists(rl_callback_handler_install "${CFG_HEADERS}" HAVE_RL_CALLBACK)
++  check_symbol_exists(rl_catch_signals            "${CFG_HEADERS}" HAVE_RL_CATCH_SIGNAL)
++  check_symbol_exists(rl_completion_append_character "${CFG_HEADERS}" HAVE_RL_COMPLETION_APPEND_CHARACTER)
++  check_symbol_exists(rl_completion_matches       "${CFG_HEADERS}" HAVE_RL_COMPLETION_MATCHES)
++  check_symbol_exists(rl_pre_input_hook           "${CFG_HEADERS}" HAVE_RL_PRE_INPUT_HOOK)
++
++  set(CFG_HEADERS ${CFG_HEADERS_SAVE})
++  macro_pop_required_vars()
++endif(HAVE_READLINE_READLINE_H)
++
++
++#######################################################################
++#
++# curses tests
++#
++#######################################################################
++if(HAVE_CURSES_H)
++  macro_push_required_vars()
++  set(CFG_HEADERS_SAVE ${CFG_HEADERS})
++
++  set(CFG_HEADERS ${CFG_HEADERS} curses.h)
++  add_cond(CMAKE_REQUIRED_LIBRARIES HAVE_LIBCURSES ${HAVE_LIBCURSES})
++  check_symbol_exists(is_term_resized "${CFG_HEADERS}" HAVE_CURSES_IS_TERM_RESIZED)
++  check_symbol_exists(resizeterm      "${CFG_HEADERS}" HAVE_CURSES_RESIZETERM)
++  check_symbol_exists(resize_term     "${CFG_HEADERS}" HAVE_CURSES_RESIZE_TERM)
++  check_struct_has_member(WINDOW _flags   "${CFG_HEADERS}" WINDOW_HAS_FLAGS)
++
++  check_c_source_compiles("#include <curses.h>\n int main() {int i; i = mvwdelch(0,0,0);}" MVWDELCH_IS_EXPRESSION)
++
++  set(CFG_HEADERS ${CFG_HEADERS_SAVE})
++  macro_pop_required_vars()
++endif(HAVE_CURSES_H)
++
++
++#######################################################################
++#
++# dynamic loading
++#
++#######################################################################
++if(HAVE_DLFCN_H)
++  macro_push_required_vars()
++  set(CFG_HEADERS_SAVE ${CFG_HEADERS})
++
++  set(CFG_HEADERS ${CFG_HEADERS} dlfcn.h)
++  add_cond(CMAKE_REQUIRED_LIBRARIES HAVE_LIBDL ${HAVE_LIBDL})
++  check_symbol_exists(dlopen          "${CFG_HEADERS}" HAVE_DLOPEN)
++
++  set(CFG_HEADERS ${CFG_HEADERS_SAVE})
++  macro_pop_required_vars()
++endif(HAVE_DLFCN_H)
++
++
++if(HAVE_DLOPEN) # OR .... )
++  set(HAVE_DYNAMIC_LOADING 1)
++else(HAVE_DLOPEN)
++  set(HAVE_DYNAMIC_LOADING 0)
++endif(HAVE_DLOPEN)
++
++
++#######################################################################
++#
++# check some types
++#
++#######################################################################
++check_type_exists(gid_t sys/types.h gid_t)
++if(NOT gid_t)
++  set(gid_t int)
++else(NOT gid_t)
++  set(gid_t 0)
++endif(NOT gid_t)
++
++check_type_exists(mode_t sys/types.h mode_t)
++if(NOT mode_t)
++  set(mode_t int)
++else(NOT mode_t)
++  set(mode_t 0)
++endif(NOT mode_t)
++
++check_type_exists(off_t sys/types.h off_t)
++if(NOT off_t)
++  set(off_t "long int")
++else(NOT off_t)
++  set(off_t 0)
++endif(NOT off_t)
++
++check_type_exists(pid_t sys/types.h pid_t)
++if(NOT pid_t)
++  set(pid_t int)
++else(NOT pid_t)
++  set(pid_t 0)
++endif(NOT pid_t)
++
++check_type_exists(size_t sys/types.h size_t)
++if(NOT size_t)
++  set(size_t "unsigned int")
++else(NOT size_t)
++  set(size_t 0)
++endif(NOT size_t)
++
++check_type_exists(socklen_t sys/socket.h socklen_t)
++if(NOT socklen_t)
++  set(socklen int)
++else(NOT socklen_t)
++  set(socklen_t 0)
++endif(NOT socklen_t)
++
++check_type_exists(uid_t sys/types.h uid_t)
++if(NOT uid_t)
++  set(uid_t int)
++else(NOT uid_t)
++  set(uid_t 0)
++endif(NOT uid_t)
++
++check_type_exists(clock_t time.h clock_t)
++if(NOT clock_t)
++  set(clock_t long)
++else(NOT clock_t)
++  set(clock_t 0)
++endif(NOT clock_t)
++
++
++check_c_source_compiles("int main() {const int i;}" const_WORKS)
++if(NOT const_WORKS)
++  set(const 1)
++else(NOT const_WORKS)
++  set(const 0)
++endif(NOT const_WORKS)
++
++check_c_source_compiles("int main() {signed int i;}" signed_WORKS)
++if(NOT signed_WORKS)
++  set(signed 1)
++else(NOT signed_WORKS)
++  set(signed 0)
++endif(NOT signed_WORKS)
++
++check_c_source_compiles("int main() {volatile int i;}" volatile_WORKS)
++if(NOT volatile_WORKS)
++  set(volatile 1)
++else(NOT volatile_WORKS)
++  set(volatile 0)
++endif(NOT volatile_WORKS)
++
++if(HAVE_STDARG_PROTOTYPES)
++   set(vaargsHeader "stdarg.h")
++else(HAVE_STDARG_PROTOTYPES)
++   set(vaargsHeader "varargs.h")
++endif(HAVE_STDARG_PROTOTYPES)
++check_c_source_compiles("#include <${vaargsHeader}>\n int main() {va_list list1, list2; list1 = list2;}" NOT_VA_LIST_IS_ARRAY)
++if(NOT_VA_LIST_IS_ARRAY)
++  set(VA_LIST_IS_ARRAY 0)
++else(NOT_VA_LIST_IS_ARRAY)
++  set(VA_LIST_IS_ARRAY 1)
++endif(NOT_VA_LIST_IS_ARRAY)
++
++
++#######################################################################
++#
++# tests for bugs and other stuff
++#
++#######################################################################
++
++check_c_source_compiles("
++        void f(char*,...)__attribute((format(PyArg_ParseTuple, 1, 2))) {}; 
++        int main() {f(NULL);} "
++        HAVE_ATTRIBUTE_FORMAT_PARSETUPLE)
++
++set(CMAKE_REQUIRED_INCLUDES ${CFG_HEADERS})
++check_c_source_compiles("#include <unistd.h>\n int main() {getpgrp(0);}" GETPGRP_HAVE_ARG)
++
++check_c_source_runs("int main() {
++        int val1 = nice(1); 
++        if (val1 != -1 && val1 == nice(2)) exit(0);
++        exit(1);}" HAVE_BROKEN_NICE)
++
++check_c_source_runs(" #include <poll.h>
++    int main () {
++    struct pollfd poll_struct = { 42, POLLIN|POLLPRI|POLLOUT, 0 }; close (42);
++    int poll_test = poll (&poll_struct, 1, 0);
++    if (poll_test < 0) { exit(0); }
++    else if (poll_test == 0 && poll_struct.revents != POLLNVAL) { exit(0); }
++    else { exit(1); } }" 
++    HAVE_BROKEN_POLL)
++
++if(HAVE_SYS_TIME_H)
++  check_include_files("sys/time.h;time.h" TIME_WITH_SYS_TIME)
++else(HAVE_SYS_TIME_H)
++  set(TIME_WITH_SYS_TIME 0)
++endif(HAVE_SYS_TIME_H)
++
++if(HAVE_SYS_TIME_H AND HAVE_SYS_SELECT_H)
++  check_include_files("sys/select.h;sys/time.h" SYS_SELECT_WITH_SYS_TIME)
++else(HAVE_SYS_TIME_H AND HAVE_SYS_SELECT_H)
++  set(SYS_SELECT_WITH_SYS_TIME 0)
++endif(HAVE_SYS_TIME_H AND HAVE_SYS_SELECT_H)
++
++
++##########################################################
++
++find_package(ZLIB)
++if(ZLIB_FOUND)
++  macro_push_required_vars()
++  set(CFG_HEADERS_SAVE ${CFG_HEADERS})
++
++  set(CFG_HEADERS ${CFG_HEADERS} zlib.h)
++  add_cond(CMAKE_REQUIRED_LIBRARIES ZLIB_FOUND ${ZLIB_LIBRARIES})
++  check_symbol_exists(inflateCopy      "${CFG_HEADERS}" HAVE_ZLIB_COPY)
++
++  set(CFG_HEADERS ${CFG_HEADERS_SAVE})
++  macro_pop_required_vars()
++endif(ZLIB_FOUND)
++
++############################################
++
++# setup the python platform
++set(PY_PLATFORM generic)
++
++if(CMAKE_SYSTEM MATCHES Linux)
++  set(PY_PLATFORM linux2)
++endif(CMAKE_SYSTEM MATCHES Linux)
++
++if(CMAKE_SYSTEM MATCHES Darwin)
++  set(PY_PLATFORM darwin)
++endif(CMAKE_SYSTEM MATCHES Darwin)
++
++if(CMAKE_SYSTEM MATCHES FreeBSD)
++  set(PY_PLATFORM freebsd5)  # which version to use ?
++endif(CMAKE_SYSTEM MATCHES FreeBSD)
++
++if(CMAKE_SYSTEM MATCHES NetBSD)
++  set(PY_PLATFORM netbsd1)
++endif(CMAKE_SYSTEM MATCHES NetBSD)
++
++if(CMAKE_SYSTEM MATCHES AIX)
++  set(PY_PLATFORM aix4)
++endif(CMAKE_SYSTEM MATCHES AIX)
++
++if(CMAKE_SYSTEM MATCHES BeOS)
++  set(PY_PLATFORM beos5)
++endif(CMAKE_SYSTEM MATCHES BeOS)
++
++if(CMAKE_SYSTEM MATCHES IRIX)
++  set(PY_PLATFORM irix6)
++endif(CMAKE_SYSTEM MATCHES IRIX)
++
++if(CMAKE_SYSTEM MATCHES SunOS)
++  set(PY_PLATFORM sunos5)
++endif(CMAKE_SYSTEM MATCHES SunOS)
++
++if(CMAKE_SYSTEM MATCHES UnixWare)
++  set(PY_PLATFORM unixware7)
++endif(CMAKE_SYSTEM MATCHES UnixWare)
++
++if(CMAKE_SYSTEM MATCHES Windows)
++  set(PY_PLATFORM win32)
++endif(CMAKE_SYSTEM MATCHES Windows)
++
++# todo 
++set(HAVE_UCS4_TCL 0)
++set(HAVE_PROTOTYPES 1)
++set(PTHREAD_SYSTEM_SCHED_SUPPORTED 1)
++set(RETSIGTYPE void)
++set(HAVE_WORKING_TZSET 1)
++set(HAVE_DECL_TZNAME 0) # no test in python sources
++set(HAVE_DEVICE_MACROS ${HAVE_MAKEDEV})
++
++set(HAVE_GETHOSTBYNAME_R 0)
++set(HAVE_GETHOSTBYNAME_R_3_ARG 0)
++set(HAVE_GETHOSTBYNAME_R_5_ARG 0)
++set(HAVE_GETHOSTBYNAME_R_6_ARG 0)
++
++endif(WIN32)
+diff --git a/Lib/CMakeLists.txt b/Lib/CMakeLists.txt
+new file mode 100644
+index 0000000..ce68a33
+--- /dev/null
++++ b/Lib/CMakeLists.txt
+@@ -0,0 +1,2 @@
++file(GLOB pyFiles *.py)
++install(FILES ${pyFiles} DESTINATION lib/python${PY_MAJOR}.${PY_MINOR} )
+diff --git a/Modules/config.c.cmake b/Modules/config.c.cmake
+new file mode 100644
+index 0000000..c330629
+--- /dev/null
++++ b/Modules/config.c.cmake
+@@ -0,0 +1,67 @@
++/* -*- C -*- ***********************************************
++Copyright (c) 2000, BeOpen.com.
++Copyright (c) 1995-2000, Corporation for National Research Initiatives.
++Copyright (c) 1990-1995, Stichting Mathematisch Centrum.
++All rights reserved.
++
++See the file "Misc/COPYRIGHT" for information on usage and
++redistribution of this file, and for a DISCLAIMER OF ALL WARRANTIES.
++******************************************************************/
++
++/* Module configuration */
++
++/* !!! !!! !!! This file is edited by the makesetup script !!! !!! !!! */
++
++/* This file contains the table of built-in modules.
++   See init_builtin() in import.c. */
++
++#include "Python.h"
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++@PY_STATIC_MODULES_INIT_FUNCTIONS@
++/* -- ADDMODULE MARKER 1 -- */
++
++extern void PyMarshal_Init(void);
++extern void initimp(void);
++extern void initgc(void);
++extern void init_ast(void);
++extern void init_types(void);
++
++struct _inittab _PyImport_Inittab[] = {
++@PY_STATIC_MODULES_INITTAB@
++
++/* -- ADDMODULE MARKER 2 -- */
++
++        /* This module lives in marshal.c */
++        {"marshal", PyMarshal_Init},
++
++        /* This lives in import.c */
++        {"imp", initimp},
++
++        /* This lives in Python/Python-ast.c */
++        {"_ast", init_ast},
++
++        /* This lives in Python/_types.c */
++        {"_types", init_types},
++
++        /* These entries are here for sys.builtin_module_names */
++        {"__main__", NULL},
++        {"__builtin__", NULL},
++        {"sys", NULL},
++        {"exceptions", NULL},
++
++        /* This lives in gcmodule.c */
++        {"gc", initgc},
++
++        /* Sentinel */
++        {0, 0}
++};
++
++
++#ifdef __cplusplus
++}
++#endif
++
+diff --git a/PythonCPack.cmake b/PythonCPack.cmake
+new file mode 100644
+index 0000000..ac7c17d
+--- /dev/null
++++ b/PythonCPack.cmake
+@@ -0,0 +1,8 @@
++SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Python is a programming language")
++
++SET(CPACK_PACKAGE_VERSION_MAJOR ${PY_MAJOR} )
++SET(CPACK_PACKAGE_VERSION_MINOR ${PY_MINOR} )
++SET(CPACK_PACKAGE_VERSION_PATCH ${PY_PATCH} )
++
++# include CPack model once all variables are set
++INCLUDE(CPack)
+diff --git a/pyconfig.h.cmake b/pyconfig.h.cmake
+new file mode 100644
+index 0000000..e2f8702
+--- /dev/null
++++ b/pyconfig.h.cmake
+@@ -0,0 +1,1039 @@
++/* pyconfig.h.in.  Generated from configure.in by autoheader.  */
++
++
++#ifndef Py_PYCONFIG_H
++#define Py_PYCONFIG_H
++
++
++/* Define for AIX if your compiler is a genuine IBM xlC/xlC_r and you want
++   support for AIX C++ shared extension modules. */
++#cmakedefine AIX_GENUINE_CPLUSPLUS 1
++
++/* Define this if you have AtheOS threads. */
++#cmakedefine ATHEOS_THREADS 1
++
++/* Define this if you have BeOS threads. */
++#cmakedefine BEOS_THREADS 1
++
++/* Define if you have the Mach cthreads package */
++#cmakedefine C_THREADS 1
++
++/* Define if --enable-ipv6 is specified */
++#cmakedefine ENABLE_IPV6 1
++
++/* Define if getpgrp() must be called as getpgrp(0). */
++#cmakedefine GETPGRP_HAVE_ARG 1
++
++/* Define if gettimeofday() does not have second (timezone) argument This is
++   the case on Motorola V4 (R40V4.2) */
++#cmakedefine GETTIMEOFDAY_NO_TZ 1
++
++/* struct addrinfo (netdb.h) */
++#cmakedefine HAVE_ADDRINFO 1
++
++/* Define to 1 if you have the `alarm' function. */
++#cmakedefine HAVE_ALARM 1
++
++/* Define this if your time.h defines altzone. */
++#cmakedefine HAVE_ALTZONE 1
++
++/* Define to 1 if you have the <arpa/inet.h> header file. */
++#cmakedefine HAVE_ARPA_INET_H 1
++
++/* Define to 1 if you have the <asm/types.h> header file. */
++#cmakedefine HAVE_ASM_TYPES_H 1
++
++/* Define if GCC supports __attribute__((format(PyArg_ParseTuple, 2, 3))) */
++#cmakedefine HAVE_ATTRIBUTE_FORMAT_PARSETUPLE
++
++/* Define to 1 if you have the `bind_textdomain_codeset' function. */
++#cmakedefine HAVE_BIND_TEXTDOMAIN_CODESET 1
++
++/* Define to 1 if you have the <bluetooth/bluetooth.h> header file. */
++#cmakedefine HAVE_BLUETOOTH_BLUETOOTH_H 1
++
++/* Define to 1 if you have the <bluetooth.h> header file. */
++#cmakedefine HAVE_BLUETOOTH_H 1
++
++/* Define if nice() returns success/failure instead of the new priority. */
++#cmakedefine HAVE_BROKEN_NICE 1
++
++/* Define if poll() sets errno on invalid file descriptors. */
++#cmakedefine HAVE_BROKEN_POLL 1
++
++/* Define if the Posix semaphores do not work on your system */
++#cmakedefine HAVE_BROKEN_POSIX_SEMAPHORES
++
++/* Define if pthread_sigmask() does not work on your system. */
++#cmakedefine HAVE_BROKEN_PTHREAD_SIGMASK
++
++/* Define this if you have the type _Bool. */
++#cmakedefine HAVE_C99_BOOL 1
++
++/* Define to 1 if you have the `chflags' function. */
++#cmakedefine HAVE_CHFLAGS
++
++/* Define to 1 if you have the `chown' function. */
++#cmakedefine HAVE_CHOWN 1
++
++/* Define if you have the 'chroot' function. */
++#cmakedefine HAVE_CHROOT 1
++
++/* Define to 1 if you have the `clock' function. */
++#cmakedefine HAVE_CLOCK 1
++
++/* Define to 1 if you have the `confstr' function. */
++#cmakedefine HAVE_CONFSTR 1
++
++/* Define to 1 if you have the <conio.h> header file. */
++#cmakedefine HAVE_CONIO_H 1
++
++/* Define to 1 if you have the `ctermid' function. */
++#cmakedefine HAVE_CTERMID 1
++
++/* Define if you have the 'ctermid_r' function. */
++#cmakedefine HAVE_CTERMID_R 1
++
++/* Define to 1 if you have the <curses.h> header file. */
++#cmakedefine HAVE_CURSES_H 1
++
++/* Define if you have the 'is_term_resized' function. */
++#cmakedefine HAVE_CURSES_IS_TERM_RESIZED 1
++
++/* Define if you have the 'resizeterm' function. */
++#cmakedefine HAVE_CURSES_RESIZETERM 1
++
++/* Define if you have the 'resize_term' function. */
++#cmakedefine HAVE_CURSES_RESIZE_TERM 1
++
++/* Define to 1 if you have the declaration of `tzname', and to 0 if you don't.
++   */
++#cmakedefine HAVE_DECL_TZNAME
++
++/* Define to 1 if you have the device macros. */
++#cmakedefine HAVE_DEVICE_MACROS 1
++
++/* Define if we have /dev/ptc. */
++#cmakedefine HAVE_DEV_PTC 1
++
++/* Define if we have /dev/ptmx. */
++#cmakedefine HAVE_DEV_PTMX 1
++
++/* Define to 1 if you have the <direct.h> header file. */
++#cmakedefine HAVE_DIRECT_H 1
++
++/* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
++   */
++#cmakedefine HAVE_DIRENT_H 1
++
++/* Define to 1 if you have the <dlfcn.h> header file. */
++#cmakedefine HAVE_DLFCN_H 1
++
++/* Define to 1 if you have the `dlopen' function. */
++#cmakedefine HAVE_DLOPEN 1
++
++/* Define to 1 if you have the `dup2' function. */
++#cmakedefine HAVE_DUP2 1
++
++/* Defined when any dynamic module loading is enabled. */
++#cmakedefine HAVE_DYNAMIC_LOADING 1
++
++/* Define to 1 if you have the <errno.h> header file. */
++#cmakedefine HAVE_ERRNO_H 1
++
++/* Define to 1 if you have the `execv' function. */
++#cmakedefine HAVE_EXECV 1
++
++/* Define if you have the 'fchdir' function. */
++#cmakedefine HAVE_FCHDIR 1
++
++/* Define to 1 if you have the <fcntl.h> header file. */
++#cmakedefine HAVE_FCNTL_H 1
++
++/* Define if you have the 'fdatasync' function. */
++#cmakedefine HAVE_FDATASYNC 1
++
++/* Define if you have the 'flock' function. */
++#cmakedefine HAVE_FLOCK 1
++
++/* Define to 1 if you have the `fork' function. */
++#cmakedefine HAVE_FORK 1
++
++/* Define to 1 if you have the `forkpty' function. */
++#cmakedefine HAVE_FORKPTY 1
++
++/* Define to 1 if you have the `fpathconf' function. */
++#cmakedefine HAVE_FPATHCONF 1
++
++/* Define to 1 if you have the `fseek64' function. */
++#cmakedefine HAVE_FSEEK64 1
++
++/* Define to 1 if you have the `fseeko' function. */
++#cmakedefine HAVE_FSEEKO 1
++
++/* Define to 1 if you have the `fstatvfs' function. */
++#cmakedefine HAVE_FSTATVFS 1
++
++/* Define if you have the 'fsync' function. */
++#cmakedefine HAVE_FSYNC 1
++
++/* Define to 1 if you have the `ftell64' function. */
++#cmakedefine HAVE_FTELL64 1
++
++/* Define to 1 if you have the `ftello' function. */
++#cmakedefine HAVE_FTELLO 1
++
++/* Define to 1 if you have the `ftime' function. */
++#cmakedefine HAVE_FTIME 1
++
++/* Define to 1 if you have the `ftruncate' function. */
++#cmakedefine HAVE_FTRUNCATE 1
++
++/* Define to 1 if you have the `gai_strerror' function. */
++#cmakedefine HAVE_GAI_STRERROR 1
++
++/* Define if you have the getaddrinfo function. */
++#cmakedefine HAVE_GETADDRINFO 1
++
++/* Define to 1 if you have the `getcwd' function. */
++#cmakedefine HAVE_GETCWD 1
++
++/* Define this if you have flockfile(), getc_unlocked(), and funlockfile() */
++#cmakedefine HAVE_GETC_UNLOCKED 1
++
++/* Define to 1 if you have the `getgroups' function. */
++#cmakedefine HAVE_GETGROUPS 1
++
++/* Define to 1 if you have the `gethostbyname' function. */
++#cmakedefine HAVE_GETHOSTBYNAME 1
++
++/* Define this if you have some version of gethostbyname_r() */
++#cmakedefine HAVE_GETHOSTBYNAME_R 1
++
++/* Define this if you have the 3-arg version of gethostbyname_r(). */
++#cmakedefine HAVE_GETHOSTBYNAME_R_3_ARG 1
++
++/* Define this if you have the 5-arg version of gethostbyname_r(). */
++#cmakedefine HAVE_GETHOSTBYNAME_R_5_ARG 1
++
++/* Define this if you have the 6-arg version of gethostbyname_r(). */
++#cmakedefine HAVE_GETHOSTBYNAME_R_6_ARG 1
++
++/* Define to 1 if you have the `getloadavg' function. */
++#cmakedefine HAVE_GETLOADAVG 1
++
++/* Define to 1 if you have the `getlogin' function. */
++#cmakedefine HAVE_GETLOGIN 1
++
++/* Define to 1 if you have the `getnameinfo' function. */
++#cmakedefine HAVE_GETNAMEINFO 1
++
++/* Define if you have the 'getpagesize' function. */
++#cmakedefine HAVE_GETPAGESIZE 1
++
++/* Define to 1 if you have the `getpeername' function. */
++#cmakedefine HAVE_GETPEERNAME 1
++
++/* Define to 1 if you have the `getpgid' function. */
++#cmakedefine HAVE_GETPGID 1
++
++/* Define to 1 if you have the `getpgrp' function. */
++#cmakedefine HAVE_GETPGRP 1
++
++/* Define to 1 if you have the `getpid' function. */
++#cmakedefine HAVE_GETPID 1
++
++/* Define to 1 if you have the `getpriority' function. */
++#cmakedefine HAVE_GETPRIORITY 1
++
++/* Define to 1 if you have the `getpwent' function. */
++#cmakedefine HAVE_GETPWENT 1
++
++/* Define to 1 if you have the `getsid' function. */
++#cmakedefine HAVE_GETSID 1
++
++/* Define to 1 if you have the `getspent' function. */
++#cmakedefine HAVE_GETSPENT 1
++
++/* Define to 1 if you have the `getspnam' function. */
++#cmakedefine HAVE_GETSPNAM 1
++
++/* Define to 1 if you have the `gettimeofday' function. */
++#cmakedefine HAVE_GETTIMEOFDAY 1
++
++/* Define to 1 if you have the `getwd' function. */
++#cmakedefine HAVE_GETWD 1
++
++/* Define to 1 if you have the <grp.h> header file. */
++#cmakedefine HAVE_GRP_H 1
++
++/* Define if you have the 'hstrerror' function. */
++#cmakedefine HAVE_HSTRERROR 1
++
++/* Define to 1 if you have the `hypot' function. */
++#cmakedefine HAVE_HYPOT 1
++
++/* Define if you have the 'inet_aton' function. */
++#cmakedefine HAVE_INET_ATON 1
++
++/* Define if you have the 'inet_pton' function. */
++#cmakedefine HAVE_INET_PTON 1
++
++/* Define to 1 if you have the <inttypes.h> header file. */
++#cmakedefine HAVE_INTTYPES_H 1
++
++/* Define to 1 if you have the <io.h> header file. */
++#cmakedefine HAVE_IO_H 1
++
++/* Define to 1 if you have the `kill' function. */
++#cmakedefine HAVE_KILL 1
++
++/* Define to 1 if you have the `killpg' function. */
++#cmakedefine HAVE_KILLPG 1
++
++/* Define to 1 if you have the <langinfo.h> header file. */
++#cmakedefine HAVE_LANGINFO_H 1
++
++/* Defined to enable large file support when an off_t is bigger than a long
++   and long long is available and at least as big as an off_t. You may need to
++   add some flags for configuration and compilation to enable this mode. (For
++   Solaris and Linux, the necessary defines are already defined.) */
++#cmakedefine HAVE_LARGEFILE_SUPPORT @HAVE_LARGEFILE_SUPPORT@
++
++/* Define to 1 if you have the `lchflags' function. */
++#cmakedefine HAVE_LCHFLAGS 1
++
++/* Define to 1 if you have the `lchown' function. */
++#cmakedefine HAVE_LCHOWN 1
++
++/* Define to 1 if you have the `dl' library (-ldl). */
++#cmakedefine HAVE_LIBDL 1
++
++/* Define to 1 if you have the `dld' library (-ldld). */
++#cmakedefine HAVE_LIBDLD 1
++
++/* Define to 1 if you have the `ieee' library (-lieee). */
++#cmakedefine HAVE_LIBIEEE 1
++
++/* Define to 1 if you have the <libintl.h> header file. */
++#cmakedefine HAVE_LIBINTL_H 1
++
++/* Define to 1 if you have the `readline' library (-lreadline). */
++#cmakedefine HAVE_LIBREADLINE 1
++
++/* Define to 1 if you have the `resolv' library (-lresolv). */
++#cmakedefine HAVE_LIBRESOLV 1
++
++/* Define to 1 if you have the `termcap' library (-ltermcap). */
++#cmakedefine HAVE_LIBTERMCAP 1
++
++/* Define to 1 if you have the <libutil.h> header file. */
++#cmakedefine HAVE_LIBUTIL_H 1
++
++/* Define if you have the 'link' function. */
++#cmakedefine HAVE_LINK 1
++
++/* Define to 1 if you have the <linux/netlink.h> header file. */
++#cmakedefine HAVE_LINUX_NETLINK_H 1
++
++/* Define to 1 if you have the <locale.h> header file. */
++#cmakedefine HAVE_LOCALE_H 1
++
++/* Define this if you have the type long long. */
++#cmakedefine HAVE_LONG_LONG 1
++
++/* Define to 1 if you have the `lstat' function. */
++#cmakedefine HAVE_LSTAT 1
++
++/* Define this if you have the makedev macro. */
++#cmakedefine HAVE_MAKEDEV 1
++
++/* Define to 1 if you have the `memmove' function. */
++#cmakedefine HAVE_MEMMOVE 1
++
++/* Define to 1 if you have the <memory.h> header file. */
++#cmakedefine HAVE_MEMORY_H 1
++
++/* Define to 1 if you have the `mkfifo' function. */
++#cmakedefine HAVE_MKFIFO 1
++
++/* Define to 1 if you have the `mknod' function. */
++#cmakedefine HAVE_MKNOD 1
++
++/* Define to 1 if you have the `mktime' function. */
++#cmakedefine HAVE_MKTIME 1
++
++/* Define to 1 if you have the `mremap' function. */
++#cmakedefine HAVE_MREMAP 1
++
++/* Define to 1 if you have the <ncurses.h> header file. */
++#cmakedefine HAVE_NCURSES_H 1
++
++/* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
++#cmakedefine HAVE_NDIR_H 1
++
++/* Define to 1 if you have the <netdb.h> header file. */
++#cmakedefine HAVE_NETDB_H 1
++
++/* Define to 1 if you have the <netinet/in.h> header file. */
++#cmakedefine HAVE_NETINET_IN_H 1
++
++/* Define to 1 if you have the <netpacket/packet.h> header file. */
++#cmakedefine HAVE_NETPACKET_PACKET_H 1
++
++/* Define to 1 if you have the `nice' function. */
++#cmakedefine HAVE_NICE 1
++
++/* Define to 1 if you have the `openpty' function. */
++#cmakedefine HAVE_OPENPTY 1
++
++/* Define to 1 if you have the `pathconf' function. */
++#cmakedefine HAVE_PATHCONF 1
++
++/* Define to 1 if you have the `pause' function. */
++#cmakedefine HAVE_PAUSE 1
++
++/* Define to 1 if you have the `plock' function. */
++#cmakedefine HAVE_PLOCK 1
++
++/* Define to 1 if you have the `poll' function. */
++#cmakedefine HAVE_POLL 1
++
++/* Define to 1 if you have the <poll.h> header file. */
++#cmakedefine HAVE_POLL_H 1
++
++/* Define to 1 if you have the <process.h> header file. */
++#cmakedefine HAVE_PROCESS_H 1
++
++/* Define if your compiler supports function prototype */
++#cmakedefine HAVE_PROTOTYPES 1
++
++/* Define if you have GNU PTH threads. */
++#cmakedefine HAVE_PTH 1
++
++/* Defined for Solaris 2.6 bug in pthread header. */
++#cmakedefine HAVE_PTHREAD_DESTRUCTOR 1
++
++/* Define to 1 if you have the <pthread.h> header file. */
++#cmakedefine HAVE_PTHREAD_H 1
++
++/* Define to 1 if you have the `pthread_init' function. */
++#cmakedefine HAVE_PTHREAD_INIT 1
++
++/* Define to 1 if you have the `pthread_sigmask' function. */
++#cmakedefine HAVE_PTHREAD_SIGMASK 1
++
++/* Define to 1 if you have the <pty.h> header file. */
++#cmakedefine HAVE_PTY_H 1
++
++/* Define to 1 if you have the `putenv' function. */
++#cmakedefine HAVE_PUTENV 1
++
++/* Define to 1 if you have the <readline/readline.h> header file. */
++#cmakedefine HAVE_READLINE_READLINE_H 1
++
++/* Define to 1 if you have the `readlink' function. */
++#cmakedefine HAVE_READLINK 1
++
++/* Define to 1 if you have the `realpath' function. */
++#cmakedefine HAVE_REALPATH 1
++
++/* Define if you have readline 2.1 */
++#cmakedefine HAVE_RL_CALLBACK 1
++
++/* Define if you can turn off readline's signal handling. */
++#cmakedefine HAVE_RL_CATCH_SIGNAL 1
++
++/* Define if you have readline 2.2 */
++#cmakedefine HAVE_RL_COMPLETION_APPEND_CHARACTER 1
++
++/* Define if you have readline 4.2 */
++#cmakedefine HAVE_RL_COMPLETION_MATCHES 1
++
++/* Define if you have readline 4.0 */
++#cmakedefine HAVE_RL_PRE_INPUT_HOOK 1
++
++/* Define to 1 if you have the `select' function. */
++#cmakedefine HAVE_SELECT 1
++
++/* Define to 1 if you have the `setegid' function. */
++#cmakedefine HAVE_SETEGID 1
++
++/* Define to 1 if you have the `seteuid' function. */
++#cmakedefine HAVE_SETEUID 1
++
++/* Define to 1 if you have the `setgid' function. */
++#cmakedefine HAVE_SETGID 1
++
++/* Define if you have the 'setgroups' function. */
++#cmakedefine HAVE_SETGROUPS 1
++
++/* Define to 1 if you have the `setlocale' function. */
++#cmakedefine HAVE_SETLOCALE 1
++
++/* Define to 1 if you have the `setpgid' function. */
++#cmakedefine HAVE_SETPGID 1
++
++/* Define to 1 if you have the `setpgrp' function. */
++#cmakedefine HAVE_SETPGRP 1
++
++/* Define to 1 if you have the `setregid' function. */
++#cmakedefine HAVE_SETREGID 1
++
++/* Define to 1 if you have the `setreuid' function. */
++#cmakedefine HAVE_SETREUID 1
++
++/* Define to 1 if you have the `setsid' function. */
++#cmakedefine HAVE_SETSID 1
++
++/* Define to 1 if you have the `setuid' function. */
++#cmakedefine HAVE_SETUID 1
++
++/* Define to 1 if you have the `setvbuf' function. */
++#cmakedefine HAVE_SETVBUF 1
++
++/* Define to 1 if you have the <shadow.h> header file. */
++#cmakedefine HAVE_SHADOW_H 1
++
++/* Define to 1 if you have the `sigaction' function. */
++#cmakedefine HAVE_SIGACTION 1
++
++/* Define to 1 if you have the `siginterrupt' function. */
++#cmakedefine HAVE_SIGINTERRUPT 1
++
++/* Define to 1 if you have the <signal.h> header file. */
++#cmakedefine HAVE_SIGNAL_H 1
++
++/* Define to 1 if you have the `sigrelse' function. */
++#cmakedefine HAVE_SIGRELSE 1
++
++/* Define to 1 if you have the `snprintf' function. */
++#cmakedefine HAVE_SNPRINTF 1
++
++/* Define if sockaddr has sa_len member */
++#cmakedefine HAVE_SOCKADDR_SA_LEN 1
++
++/* struct sockaddr_storage (sys/socket.h) */
++#cmakedefine HAVE_SOCKADDR_STORAGE 1
++
++/* Define if you have the 'socketpair' function. */
++#cmakedefine HAVE_SOCKETPAIR 1
++
++/* Define if your compiler provides ssize_t */
++#cmakedefine HAVE_SSIZE_T 1
++
++/* Define to 1 if you have the `statvfs' function. */
++#cmakedefine HAVE_STATVFS 1
++
++/* Define if you have struct stat.st_mtim.tv_nsec */
++#cmakedefine HAVE_STAT_TV_NSEC 1
++
++/* Define if you have struct stat.st_mtimensec */
++#cmakedefine HAVE_STAT_TV_NSEC2 1
++
++/* Define if your compiler supports variable length function prototypes (e.g.
++   void fprintf(FILE *, char *, ...);) *and* <stdarg.h> */
++#cmakedefine HAVE_STDARG_PROTOTYPES 1
++
++/* Define to 1 if you have the <stdint.h> header file. */
++#cmakedefine HAVE_STDINT_H 1
++
++/* Define to 1 if you have the <stdlib.h> header file. */
++#cmakedefine HAVE_STDLIB_H 1
++
++/* Define to 1 if you have the `strdup' function. */
++#cmakedefine HAVE_STRDUP 1
++
++/* Define to 1 if you have the `strerror' function. */
++#cmakedefine HAVE_STRERROR 1
++
++/* Define to 1 if you have the `strftime' function. */
++#cmakedefine HAVE_STRFTIME 1
++
++/* Define to 1 if you have the <strings.h> header file. */
++#cmakedefine HAVE_STRINGS_H 1
++
++/* Define to 1 if you have the <string.h> header file. */
++#cmakedefine HAVE_STRING_H 1
++
++/* Define to 1 if you have the <stropts.h> header file. */
++#cmakedefine HAVE_STROPTS_H 1
++
++/* Define to 1 if `st_birthtime' is member of `struct stat'. */
++#cmakedefine HAVE_STRUCT_STAT_ST_BIRTHTIME
++
++/* Define to 1 if `st_blksize' is member of `struct stat'. */
++#cmakedefine HAVE_STRUCT_STAT_ST_BLKSIZE 1
++
++/* Define to 1 if `st_blocks' is member of `struct stat'. */
++#cmakedefine HAVE_STRUCT_STAT_ST_BLOCKS 1
++
++/* Define to 1 if `st_flags' is member of `struct stat'. */
++#cmakedefine HAVE_STRUCT_STAT_ST_FLAGS 1
++
++/* Define to 1 if `st_gen' is member of `struct stat'. */
++#cmakedefine HAVE_STRUCT_STAT_ST_GEN 1
++
++/* Define to 1 if `st_rdev' is member of `struct stat'. */
++#cmakedefine HAVE_STRUCT_STAT_ST_RDEV 1
++
++/* Define to 1 if `tm_zone' is member of `struct tm'. */
++#cmakedefine HAVE_STRUCT_TM_TM_ZONE 1
++
++/* Define to 1 if your `struct stat' has `st_blocks'. Deprecated, use
++   `HAVE_STRUCT_STAT_ST_BLOCKS' instead. */
++#cmakedefine HAVE_ST_BLOCKS 1
++
++/* Define if you have the 'symlink' function. */
++#cmakedefine HAVE_SYMLINK 1
++
++/* Define to 1 if you have the `sysconf' function. */
++#cmakedefine HAVE_SYSCONF 1
++
++/* Define to 1 if you have the <sysexits.h> header file. */
++#cmakedefine HAVE_SYSEXITS_H 1
++
++/* Define to 1 if you have the <sys/audioio.h> header file. */
++#cmakedefine HAVE_SYS_AUDIOIO_H 1
++
++/* Define to 1 if you have the <sys/bsdtty.h> header file. */
++#cmakedefine HAVE_SYS_BSDTTY_H 1
++
++/* Define to 1 if you have the <sys/dir.h> header file, and it defines `DIR'.
++   */
++#cmakedefine HAVE_SYS_DIR_H 1
++
++/* Define to 1 if you have the <sys/file.h> header file. */
++#cmakedefine HAVE_SYS_FILE_H 1
++
++/* Define to 1 if you have the <sys/loadavg.h> header file. */
++#cmakedefine HAVE_SYS_LOADAVG_H 1
++
++/* Define to 1 if you have the <sys/lock.h> header file. */
++#cmakedefine HAVE_SYS_LOCK_H 1
++
++/* Define to 1 if you have the <sys/mman.h> header file. */
++#cmakedefine HAVE_SYS_MMAN_H 1
++
++/* Define to 1 if you have the <sys/mkdev.h> header file. */
++#cmakedefine HAVE_SYS_MKDEV_H 1
++
++/* Define to 1 if you have the <sys/modem.h> header file. */
++#cmakedefine HAVE_SYS_MODEM_H 1
++
++/* Define to 1 if you have the <sys/ndir.h> header file, and it defines `DIR'.
++   */
++#cmakedefine HAVE_SYS_NDIR_H 1
++
++/* Define to 1 if you have the <sys/param.h> header file. */
++#cmakedefine HAVE_SYS_PARAM_H 1
++
++/* Define to 1 if you have the <sys/poll.h> header file. */
++#cmakedefine HAVE_SYS_POLL_H 1
++
++/* Define to 1 if you have the <sys/resource.h> header file. */
++#cmakedefine HAVE_SYS_RESOURCE_H 1
++
++/* Define to 1 if you have the <sys/select.h> header file. */
++#cmakedefine HAVE_SYS_SELECT_H 1
++
++/* Define to 1 if you have the <sys/socket.h> header file. */
++#cmakedefine HAVE_SYS_SOCKET_H 1
++
++/* Define to 1 if you have the <sys/statvfs.h> header file. */
++#cmakedefine HAVE_SYS_STATVFS_H 1
++
++/* Define to 1 if you have the <sys/stat.h> header file. */
++#cmakedefine HAVE_SYS_STAT_H 1
++
++/* Define to 1 if you have the <sys/timeb.h> header file. */
++#cmakedefine HAVE_SYS_TIMEB_H 1
++
++/* Define to 1 if you have the <sys/times.h> header file. */
++#cmakedefine HAVE_SYS_TIMES_H 1
++
++/* Define to 1 if you have the <sys/time.h> header file. */
++#cmakedefine HAVE_SYS_TIME_H 1
++
++/* Define to 1 if you have the <sys/types.h> header file. */
++#cmakedefine HAVE_SYS_TYPES_H 1
++
++/* Define to 1 if you have the <sys/un.h> header file. */
++#cmakedefine HAVE_SYS_UN_H 1
++
++/* Define to 1 if you have the <sys/utsname.h> header file. */
++#cmakedefine HAVE_SYS_UTSNAME_H 1
++
++/* Define to 1 if you have the <sys/wait.h> header file. */
++#cmakedefine HAVE_SYS_WAIT_H 1
++
++/* Define to 1 if you have the `tcgetpgrp' function. */
++#cmakedefine HAVE_TCGETPGRP 1
++
++/* Define to 1 if you have the `tcsetpgrp' function. */
++#cmakedefine HAVE_TCSETPGRP 1
++
++/* Define to 1 if you have the `tempnam' function. */
++#cmakedefine HAVE_TEMPNAM 1
++
++/* Define to 1 if you have the <termios.h> header file. */
++#cmakedefine HAVE_TERMIOS_H 1
++
++/* Define to 1 if you have the <term.h> header file. */
++#cmakedefine HAVE_TERM_H 1
++
++/* Define to 1 if you have the <thread.h> header file. */
++#cmakedefine HAVE_THREAD_H 1
++
++/* Define to 1 if you have the `timegm' function. */
++#cmakedefine HAVE_TIMEGM 1
++
++/* Define to 1 if you have the `times' function. */
++#cmakedefine HAVE_TIMES 1
++
++/* Define to 1 if you have the `tmpfile' function. */
++#cmakedefine HAVE_TMPFILE 1
++
++/* Define to 1 if you have the `tmpnam' function. */
++#cmakedefine HAVE_TMPNAM 1
++
++/* Define to 1 if you have the `tmpnam_r' function. */
++#cmakedefine HAVE_TMPNAM_R 1
++
++/* Define to 1 if your `struct tm' has `tm_zone'. Deprecated, use
++   `HAVE_STRUCT_TM_TM_ZONE' instead. */
++#cmakedefine HAVE_TM_ZONE 1
++
++/* Define to 1 if you have the `truncate' function. */
++#cmakedefine HAVE_TRUNCATE 1
++
++/* Define to 1 if you don't have `tm_zone' but do have the external array
++   `tzname'. */
++#cmakedefine HAVE_TZNAME 1
++
++/* Define this if you have tcl and TCL_UTF_MAX==6 */
++#cmakedefine HAVE_UCS4_TCL 1
++
++/* Define to 1 if the system has the type `uintptr_t'. */
++#cmakedefine HAVE_UINTPTR_T 1
++
++/* Define to 1 if you have the `uname' function. */
++#cmakedefine HAVE_UNAME 1
++
++/* Define to 1 if you have the <unistd.h> header file. */
++#cmakedefine HAVE_UNISTD_H 1
++
++/* Define to 1 if you have the `unsetenv' function. */
++#cmakedefine HAVE_UNSETENV 1
++
++/* Define if you have a useable wchar_t type defined in wchar.h; useable means
++   wchar_t must be an unsigned type with at least 16 bits. (see
++   Include/unicodeobject.h). */
++#cmakedefine HAVE_USABLE_WCHAR_T
++
++/* Define to 1 if you have the `utimes' function. */
++#cmakedefine HAVE_UTIMES 1
++
++/* Define to 1 if you have the <utime.h> header file. */
++#cmakedefine HAVE_UTIME_H 1
++
++/* Define to 1 if you have the `wait3' function. */
++#cmakedefine HAVE_WAIT3 1
++
++/* Define to 1 if you have the `wait4' function. */
++#cmakedefine HAVE_WAIT4 1
++
++/* Define to 1 if you have the `waitpid' function. */
++#cmakedefine HAVE_WAITPID 1
++
++/* Define if the compiler provides a wchar.h header file. */
++#cmakedefine HAVE_WCHAR_H 1
++
++/* Define to 1 if you have the `wcscoll' function. */
++#cmakedefine HAVE_WCSCOLL 1
++
++/* Define if tzset() actually switches the local timezone in a meaningful way.
++   */
++#cmakedefine HAVE_WORKING_TZSET 1
++
++/* Define if the zlib library has inflateCopy */
++#cmakedefine HAVE_ZLIB_COPY 1
++
++/* Define to 1 if you have the `_getpty' function. */
++#cmakedefine HAVE__GETPTY 1
++
++/* Define if you are using Mach cthreads directly under /include */
++#cmakedefine HURD_C_THREADS 1
++
++/* Define if you are using Mach cthreads under mach / */
++#cmakedefine MACH_C_THREADS 1
++
++/* Define to 1 if `major', `minor', and `makedev' are declared in <mkdev.h>.
++   */
++#cmakedefine MAJOR_IN_MKDEV
++
++/* Define to 1 if `major', `minor', and `makedev' are declared in
++   <sysmacros.h>. */
++#cmakedefine MAJOR_IN_SYSMACROS
++
++/* Define if mvwdelch in curses.h is an expression. */
++#cmakedefine MVWDELCH_IS_EXPRESSION 1
++
++/* Define to the address where bug reports for this package should be sent. */
++#cmakedefine PACKAGE_BUGREPORT
++
++/* Define to the full name of this package. */
++#cmakedefine PACKAGE_NAME @PACKAGE_NAME@
++
++/* Define to the full name and version of this package. */
++#cmakedefine PACKAGE_STRING @PACKAGE_STRING@
++
++/* Define to the one symbol short name of this package. */
++#cmakedefine PACKAGE_TARNAME @PACKAGE_TARNAME@
++
++/* Define to the version of this package. */
++#cmakedefine PACKAGE_VERSION @PACKAGE_VERSION@
++
++/* Defined if PTHREAD_SCOPE_SYSTEM supported. */
++#cmakedefine PTHREAD_SYSTEM_SCHED_SUPPORTED 1
++
++/* Define to printf format modifier for Py_ssize_t */
++#cmakedefine PY_FORMAT_SIZE_T
++
++/* Define as the integral type used for Unicode representation. */
++#cmakedefine PY_UNICODE_TYPE @PY_UNICODE_TYPE@
++
++/* Define if you want to build an interpreter with many run-time checks. */
++#cmakedefine Py_DEBUG 1
++
++/* Defined if Python is built as a shared library. */
++#cmakedefine Py_ENABLE_SHARED
++
++/* Define as the size of the unicode type. */
++#cmakedefine Py_UNICODE_SIZE @Py_UNICODE_SIZE@
++
++/* Define if you want to have a Unicode type. */
++#cmakedefine Py_USING_UNICODE 1
++
++/* Define as the return type of signal handlers (`int' or `void'). */
++#cmakedefine RETSIGTYPE @RETSIGTYPE@
++
++/* Define if setpgrp() must be called as setpgrp(0, 0). */
++#cmakedefine SETPGRP_HAVE_ARG
++
++/* Define this to be extension of shared libraries (including the dot!). */
++#define SHLIB_EXT "@CMAKE_SHARED_LIBRARY_SUFFIX@"
++
++/* Define if i>>j for signed int i does not extend the sign bit when i < 0 */
++#cmakedefine SIGNED_RIGHT_SHIFT_ZERO_FILLS
++
++/* The size of `double', as computed by sizeof. */
++#cmakedefine SIZEOF_DOUBLE @SIZEOF_DOUBLE@
++
++/* The size of `float', as computed by sizeof. */
++#cmakedefine SIZEOF_FLOAT @SIZEOF_FLOAT@
++
++/* The size of `fpos_t', as computed by sizeof. */
++#cmakedefine SIZEOF_FPOS_T @SIZEOF_FPOS_T@
++
++/* The size of `int', as computed by sizeof. */
++#cmakedefine SIZEOF_INT @SIZEOF_INT@
++
++/* The size of `long', as computed by sizeof. */
++#cmakedefine SIZEOF_LONG @SIZEOF_LONG@
++
++/* The size of `long long', as computed by sizeof. */
++#cmakedefine SIZEOF_LONG_LONG @SIZEOF_LONG_LONG@
++
++/* The number of bytes in an off_t. */
++#cmakedefine SIZEOF_OFF_T @SIZEOF_OFF_T@
++
++/* The number of bytes in a pthread_t. */
++#cmakedefine SIZEOF_PTHREAD_T @SIZEOF_PTHREAD_T@
++
++/* The size of `short', as computed by sizeof. */
++#cmakedefine SIZEOF_SHORT @SIZEOF_SHORT@
++
++/* The size of `size_t', as computed by sizeof. */
++#cmakedefine SIZEOF_SIZE_T @SIZEOF_SIZE_T@
++
++/* The number of bytes in a time_t. */
++#cmakedefine SIZEOF_TIME_T @SIZEOF_TIME_T@
++
++/* The size of `uintptr_t', as computed by sizeof. */
++#cmakedefine SIZEOF_UINTPTR_T @SIZEOF_UINTPTR_T@
++
++/* The size of `void *', as computed by sizeof. */
++#cmakedefine SIZEOF_VOID_P @SIZEOF_VOID_P@
++
++/* The size of `wchar_t', as computed by sizeof. */
++#cmakedefine SIZEOF_WCHAR_T @SIZEOF_WCHAR_T@
++
++/* The size of `_Bool', as computed by sizeof. */
++#cmakedefine SIZEOF__BOOL @SIZEOF__BOOL@
++
++/* Define to 1 if you have the ANSI C header files. */
++#cmakedefine STDC_HEADERS 1
++
++/* Define if you can safely include both <sys/select.h> and <sys/time.h>
++   (which you can't on SCO ODT 3.0). */
++#cmakedefine SYS_SELECT_WITH_SYS_TIME 1
++
++/* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
++#cmakedefine TIME_WITH_SYS_TIME 1
++
++/* Define to 1 if your <sys/time.h> declares `struct tm'. */
++#cmakedefine TM_IN_SYS_TIME 1
++
++/* Define if you want to use MacPython modules on MacOSX in unix-Python. */
++#cmakedefine USE_TOOLBOX_OBJECT_GLUE
++
++/* Define if a va_list is an array of some kind */
++#cmakedefine VA_LIST_IS_ARRAY 1
++
++/* Define if you want SIGFPE handled (see Include/pyfpe.h). */
++#cmakedefine WANT_SIGFPE_HANDLER
++
++/* Define if you want wctype.h functions to be used instead of the one
++   supplied by Python itself. (see Include/unicodectype.h). */
++#cmakedefine WANT_WCTYPE_FUNCTIONS
++
++/* Define if WINDOW in curses.h offers a field _flags. */
++#cmakedefine WINDOW_HAS_FLAGS 1
++
++/* Define if you want documentation strings in extension modules */
++#cmakedefine WITH_DOC_STRINGS 1
++
++/* Define if you want to use the new-style (Openstep, Rhapsody, MacOS) dynamic
++   linker (dyld) instead of the old-style (NextStep) dynamic linker (rld).
++   Dyld is necessary to support frameworks. */
++#cmakedefine WITH_DYLD 1
++
++/* Define to 1 if libintl is needed for locale functions. */
++#cmakedefine WITH_LIBINTL
++
++/* Define if you want to produce an OpenStep/Rhapsody framework (shared
++   library plus accessory files). */
++#cmakedefine WITH_NEXT_FRAMEWORK 1
++
++/* Define if you want to compile in Python-specific mallocs */
++#cmakedefine WITH_PYMALLOC 1
++
++/* Define if you want to compile in rudimentary thread support */
++#cmakedefine WITH_THREAD 1
++
++/* Define to profile with the Pentium timestamp counter */
++#cmakedefine WITH_TSC 1
++
++
++ /* Define to 1 if your processor stores words with the most significant byte
++    first (like Motorola and SPARC, unlike Intel and VAX). 
++
++    The block below does compile-time checking for endianness on platforms
++    that use GCC and therefore allows compiling fat binaries on OSX by using 
++    '-arch ppc -arch i386' as the compile flags. The phrasing was choosen
++    such that the configure-result is used on systems that don't use GCC.
++  */
++#ifdef __BIG_ENDIAN__
++#define WORDS_BIGENDIAN 1
++#else
++#ifndef __LITTLE_ENDIAN__
++#undef WORDS_BIGENDIAN
++#endif
++#endif
++
++/* Define to 1 if on AIX 3.
++   System headers sometimes define this.
++   We just want to avoid a redefinition error message.  */
++#ifndef _ALL_SOURCE
++# undef _ALL_SOURCE
++#endif
++
++/* Define on OpenBSD to activate all library features */
++#cmakedefine _BSD_SOURCE 1
++
++/* Define on Irix to enable u_int */
++#cmakedefine _BSD_TYPES 1
++
++/* This must be set to 64 on some systems to enable large file support. */
++#cmakedefine _FILE_OFFSET_BITS @_FILE_OFFSET_BITS@ 
++
++/* Define on Linux to activate all library features */
++#cmakedefine _GNU_SOURCE 1
++
++/* This must be defined on some systems to enable large file support. */
++#cmakedefine _LARGEFILE_SOURCE @_LARGEFILE_SOURCE@
++
++/* Define on NetBSD to activate all library features */
++#cmakedefine _NETBSD_SOURCE 1
++
++/* Define _OSF_SOURCE to get the makedev macro. */
++#cmakedefine _OSF_SOURCE
++
++/* Define to activate features from IEEE Stds 1003.1-2001 */
++#cmakedefine _POSIX_C_SOURCE @_POSIX_C_SOURCE@
++
++/* Define if you have POSIX threads, and your system does not define that. */
++#cmakedefine _POSIX_THREADS
++
++/* Define to force use of thread-safe errno, h_errno, and other functions */
++#cmakedefine _REENTRANT 1
++
++/* Define to the level of X/Open that your system supports */
++#cmakedefine _XOPEN_SOURCE @_XOPEN_SOURCE@
++
++/* Define to activate Unix95-and-earlier features */
++#cmakedefine _XOPEN_SOURCE_EXTENDED 1
++
++/* Define on FreeBSD to activate all library features */
++#cmakedefine __BSD_VISIBLE 1
++
++/* Define to 1 if type `char' is unsigned and you are not using gcc.  */
++#ifndef __CHAR_UNSIGNED__
++# undef __CHAR_UNSIGNED__
++#endif
++
++/* Defined on Solaris to see additional function prototypes. */
++#cmakedefine __EXTENSIONS__
++
++/* Define to 'long' if <time.h> doesn't define. */
++#cmakedefine clock_t @clock_t@
++
++/* Define to empty if `const' does not conform to ANSI C. */
++#cmakedefine const
++
++/* Define to `int' if <sys/types.h> doesn't define. */
++#cmakedefine gid_t @gid_t@
++
++/* Define to `int' if <sys/types.h> does not define. */
++#cmakedefine mode_t @mode_t@
++
++/* Define to `long int' if <sys/types.h> does not define. */
++#cmakedefine off_t @off_t@
++
++/* Define to `int' if <sys/types.h> does not define. */
++#cmakedefine pid_t @pid_t@
++
++/* Define to empty if the keyword does not work. */
++#cmakedefine signed
++
++/* Define to `unsigned int' if <sys/types.h> does not define. */
++#cmakedefine size_t @size_t@
++
++/* Define to `int' if <sys/socket.h> does not define. */
++#cmakedefine socklen_t @socklen_t@
++
++/* Define to `int' if <sys/types.h> doesn't define. */
++#cmakedefine uid_t @uid_t@
++
++/* Define to empty if the keyword does not work. */
++#cmakedefine volatile
++
++
++/* Define the macros needed if on a UnixWare 7.x system. */
++#if defined(__USLC__) && defined(__SCO_VERSION__)
++#define STRICT_SYSV_CURSES /* Don't use ncurses extensions */
++#endif
++
++#endif /*Py_PYCONFIG_H*/
++
