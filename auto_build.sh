@@ -1,10 +1,14 @@
-base=/gpfs/small/PHASTA/home/PHASmari/source/auto_build
+base=$HOME/source/auto_build
+base=/scratch/pmarion/autobuild
+
+toolchain_file=BlueGeneP-xl-static.cmake
+
 make_command="make -j2"
 
 install_base=$base/install
 xinstall_base=$base/install/xlc
 git_install_dir=$install_base/git-1.7.1
-cmake_install_dir=$install_base/cmake-2.8.1
+cmake_install_dir=$install_base/cmake-2.8.2
 osmesa_install_dir=$install_base/osmesa-7.0.2
 osmesa_xinstall_dir=$xinstall_base/osmesa-7.0.2
 python_install_dir=$install_base/python-2.5.2
@@ -12,27 +16,47 @@ python_xinstall_dir=$xinstall_base/python-2.5.2
 paraview_install_dir=$install_base/paraview
 paraview_xinstall_dir=$xinstall_base/paraview
 
-#git_command=$git_install_dir/bin/git
-git_command=$base/source/git/git-1.7.1/git
+use_wget=0
+broken_git_install=0
+
+#c_compiler=/opt/ibmcmp/vac/bg/8.0/bin/blrts_xlc
+#cxx_compiler=/opt/ibmcmp/vacpp/bg/8.0/bin/blrts_xlC
+
+c_compiler=bgxlc
+cxx_compiler=bgxlC
+
+mpi_c_compiler=mpixlc
+mpi_cxx_compiler=mpixlcxx
+
+
+if [ $broken_git_install -eq 1 ]; then
+    git_command=$base/source/git/git-1.7.1/git
+else
+    git_command=$git_install_dir/bin/git
+fi
+
 cmake_command=$cmake_install_dir/bin/cmake
-toolchain_file=$base/toolchains/toolchain-xlc-bgl.cmake
+toolchain_file=$base/toolchains/$toolchain_file
+
+#cmake_patch_file=
+cmake_patch_file=cmake-fix-bootstrap.patch
 
 # Get full path to this script
 cd `dirname $0`
 script_dir=`pwd`
 
 
-use_mpi_compilers()
+grab()
 {
-export CC=mpicc
-export CXX=mpicxx
+url=$1
+file=$2
+if [ $use_wget -eq 1 ]; then
+    wget $url/$file
+else 
+    cp $script_dir/$file ./
+fi 
 }
 
-unset_compilers()
-{
-unset CC
-unset CXX
-}
 
 do_git()
 {
@@ -40,8 +64,7 @@ rm -rf $base/source/git
 mkdir -p $base/source/git
 cd $base/source/git
 package=git-1.7.1
-#wget http://kernel.org/pub/software/scm/git/$package.tar.gz
-cp $script_dir/$package.tar.gz ./
+grab http://kernel.org/pub/software/scm/git $package.tar.gz
 tar -zxf $package.tar.gz
 cd $package
 ./configure --prefix=$git_install_dir
@@ -53,17 +76,27 @@ do_cmake()
 rm -rf $base/source/cmake
 mkdir -p $base/source/cmake
 cd $base/source/cmake
-package=cmake-2.8.1
-#wget http://www.cmake.org/files/v2.8/$package.tar.gz
-cp $script_dir/$package.tar.gz ./
+package=cmake-2.8.2
+grab http://www.cmake.org/files/v2.8 $package.tar.gz
 tar -zxf $package.tar.gz
+
+if [ "$cmake_patch_file" ]; then
+    cd $package
+    cp $script_dir/$cmake_patch_file ./
+    $git_command apply $cmake_patch_file
+    cd ..
+fi
+
 mkdir build
 cd build
 ../$package/bootstrap --prefix=$cmake_install_dir
 $make_command && make install
+
+# install extra platform files, this can be removed when they are part of cmake
+cp $script_dir/cmake-platform-files/* $cmake_install_dir/share/cmake-2.8/Modules/Platform/
 }
 
-do_toolchain()
+do_toolchains()
 {
 rm -rf $base/toolchains
 mkdir -p $base/toolchains
@@ -73,31 +106,36 @@ cp $script_dir/toolchains/$fname ./
 sed -i -e "s|XINSTALL_DIR|$xinstall_base|g" $toolchain_file 
 }
 
-do_python()
+do_python_cross()
 {
 rm -rf $base/source/python
 mkdir -p $base/source/python
 cd $base/source/python
 package=Python-2.5.2
-#wget http://www.python.org/ftp/python/2.5.2/$package.tgz
-cp $script_dir/$package.tgz ./
+grab http://www.python.org/ftp/python/2.5.2 $package.tgz
 tar -zxf $package.tgz
 cp $script_dir/add_cmake_files_to_python2-5-2.patch ./
 patch -p1 -d $package < add_cmake_files_to_python2-5-2.patch
-mkdir build-bgl-xlc
-cd build-bgl-xlc
-use_mpi_compilers
+mkdir build-xlc
+cd build-xlc
+
+# todo - remove PYTHON_BUILD_LIB_SHARED=0
+# it is here for bg/p which finds libdl and sets
+# build shared default to true, should key off TARGET_SUPPORTS_SHARED_LIBS
+
 $cmake_command \
   -DCMAKE_TOOLCHAIN_FILE=$toolchain_file \
+  -DCMAKE_BUILD_TYPE:STRING=Release \
+  -DPYTHON_BUILD_LIB_SHARED:BOOL=0 \
   -DHAVE_GETGROUPS:BOOL=0 \
   -DHAVE_SETGROUPS:BOOL=0 \
   -DENABLE_IPV6:BOOL=0 \
   -DCMAKE_INSTALL_PREFIX=$python_xinstall_dir \
   -C ../$package/CMake/TryRunResults-Python-bgl-gcc.cmake \
   ../$package
-#../Python-2.5.2/configure --prefix=$python_install_dir --enable-shared
+
 $make_command && make install
-unset_compilers
+
 
 }
 
@@ -107,13 +145,15 @@ package=Python-2.5.2
 cd $base/source/python
 mkdir build-native
 cd build-native
-unset_compilers
-#$cmake_command \
-#  -DCMAKE_INSTALL_PREFIX=$python_install_dir \
-#  ../$package
 ../$package/configure --prefix=$python_install_dir --enable-shared
 $make_command && make install
 
+}
+
+do_python()
+{
+do_python_cross
+do_python_native
 }
 
 do_osmesa_cross()
@@ -122,16 +162,16 @@ rm -rf $base/source/mesa
 mkdir -p $base/source/mesa
 cd $base/source/mesa
 package=MesaLib-7.0.4
-#wget http://downloads.sourceforge.net/project/mesa3d/MesaLib/7.0.4/MesaLib-7.0.4.tar.gz
-cp $script_dir/$package.tar.gz ./
+grab http://downloads.sourceforge.net/project/mesa3d/MesaLib/7.0.4 $package.tar.gz
 tar -zxf $package.tar.gz
 
 cp -r Mesa-7.0.4 build-xlc
 cd build-xlc
 sed -i.original -e 's|INSTALL_DIR = /usr/local|INSTALL_DIR = '$osmesa_xinstall_dir'|g' configs/default
-use_mpi_compilers
-$make_command bluegene-osmesa && make install
-unset_compilers
+sed -i.original -e 's|CC = .*|CC = '$c_compiler'|g' configs/bluegene-xlc-osmesa
+sed -i.original -e 's|CXX = .*|CXX = '$cxx_compiler'|g' configs/bluegene-xlc-osmesa
+
+$make_command bluegene-xlc-osmesa && make install
 }
 
 do_osmesa_native()
@@ -146,19 +186,42 @@ sed -i.original -e 's|INSTALL_DIR = /usr/local|INSTALL_DIR = '$osmesa_install_di
 $make_command linux-osmesa && make install
 }
 
+do_osmesa()
+{
+do_osmesa_cross
+do_osmesa_native
+}
+
 do_paraview_download()
 {
 mkdir -p $base/source/paraview
 cd $base/source/paraview
 rm -rf ParaView
-#$git_command clone git://paraview.org/ParaView.git
-$git_command clone home:/source/paraview/ParaView
+$git_command clone git://paraview.org/ParaView.git
+#$git_command clone home:/source/paraview/ParaView
 cd ParaView
 $git_command submodule init
-$git_command config submodule.VTK.url home:/source/paraview/ParaView/VTK
-$git_command config submodule.Xdmf.url home:/source/paraview/ParaView/Utilities/Xdmf2
-$git_command config submodule.IceT.url home:/source/paraview/ParaView/Utilities/IceT
+#$git_command config submodule.VTK.url home:/source/paraview/ParaView/VTK
+#$git_command config submodule.Xdmf.url home:/source/paraview/ParaView/Utilities/Xdmf2
+#$git_command config submodule.IceT.url home:/source/paraview/ParaView/Utilities/IceT
 $git_command submodule update
+
+#cd VTK/.git/hooks
+#$git_command init
+#$git_command pull .. remotes/origin/hooks
+#cd -
+
+mkdir -p VTK/.git/hooks/.git
+touch VTK/.git/hooks/.git/config
+
+mkdir -p .git/hooks/.git
+touch .git/hooks/.git/config
+
+# Apply patch to workaround ostream problem
+patch_file=paraview-fix-cswrapper.patch
+cp $script_dir/$patch_file ./
+$git_command apply $patch_file
+
 }
 
 do_paraview_configure_native()
@@ -171,30 +234,33 @@ bash $script_dir/configure_paraview_native.sh ../ParaView $paraview_install_dir 
 
 do_paraview_configure_cross()
 {
-rm -rf $base/source/paraview/build-bgl-xlc
-mkdir -p $base/source/paraview/build-bgl-xlc
-cd $base/source/paraview/build-bgl-xlc
-bash $script_dir/configure_paraview_bgl_xlc.sh ../ParaView $paraview_xinstall_dir $osmesa_xinstall_dir $python_xinstall_dir $cmake_command $toolchain_file $base/source/paraview/build-native
+rm -rf $base/source/paraview/build-xlc
+mkdir -p $base/source/paraview/build-xlc
+cd $base/source/paraview/build-xlc
+bash $script_dir/configure_paraview_xlc.sh ../ParaView $paraview_xinstall_dir $osmesa_xinstall_dir $python_xinstall_dir $cmake_command $toolchain_file $base/source/paraview/build-native
 }
 
 
 do_paraview_build_native()
 {
 cd $base/source/paraview/build-native
-$make_command && make install
+#$make_command && make install
+$make_command pvHostTools
 }
 
 do_paraview_build_cross()
 {
-cd $base/source/paraview/build-bgl-xlc
+cd $base/source/paraview/build-xlc
 $make_command && make install
 }
 
 do_paraview()
 {
 do_paraview_download
-do_paraview_configure
-do_paraview_build
+do_paraview_configure_native
+do_paraview_build_native
+do_paraview_configure_cross
+do_paraview_build_cross
 }
 
 do_all()

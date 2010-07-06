@@ -1,0 +1,13 @@
+diff --git a/Utilities/VTKClientServer/Wrapping/vtkWrapClientServer.c b/Utilities/VTKClientServer/Wrapping/vtkWrapClientServer.c
+index 325db58..877891d 100644
+--- a/Utilities/VTKClientServer/Wrapping/vtkWrapClientServer.c
++++ b/Utilities/VTKClientServer/Wrapping/vtkWrapClientServer.c
+@@ -1098,7 +1098,7 @@ void vtkParseOutput(FILE *fp, FileInfo *fileInfo)
+   if(strcmp("vtkObjectBase", data->Name) != 0)
+     {
+     /* Block inclusion of full streams. */
+-    fprintf(fp,"#define VTK_STREAMS_FWD_ONLY\n");
++    //fprintf(fp,"#define VTK_STREAMS_FWD_ONLY\n");
+     }
+   fprintf(fp,"#include \"vtkSystemIncludes.h\"\n");
+   fprintf(fp,"#include \"%s.h\"\n",data->Name);
