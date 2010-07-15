@@ -1,0 +1,41 @@
+# Configuration for building only libOSMesa on Linux, no Xlib driver
+# This doesn't really have any Linux dependencies, so it should be usable
+# on other (gcc-based) systems.
+
+include $(TOP)/configs/default
+
+CONFIG_NAME = linux-osmesa
+
+# Compiler and flags
+CC = gcc
+CXX = g++
+CFLAGS = -O3 -ansi -pedantic -ffast-math -D_POSIX_SOURCE -D_POSIX_C_SOURCE=199309L -D_SVID_SOURCE -D_BSD_SOURCE -DPTHREADS
+CXXFLAGS = -O3 -ansi -pedantic -ffast-math -D_POSIX_SOURCE -D_POSIX_C_SOURCE=199309L -D_SVID_SOURCE -D_BSD_SOURCE
+
+MKLIB_OPTIONS = -static
+PIC_FLAGS =
+
+# Work around aliasing bugs - developers should comment this out
+CFLAGS += -fno-strict-aliasing
+CXXFLAGS += -fno-strict-aliasing
+
+# 32 bits/channel
+#CFLAGS += -DCHAN_BITS=32 -DDEFAULT_SOFTWARE_DEPTH_BITS=31
+# 16 bits/channel
+#CFLAGS += -DCHAN_BITS=16 -DDEFAULT_SOFTWARE_DEPTH_BITS=31
+
+# Library names
+OSMESA_LIB = OSMesa
+OSMESA_LIB_NAME = libOSMesa.a
+
+
+# Directories
+SRC_DIRS = mesa glu
+DRIVER_DIRS = osmesa
+PROGRAM_DIRS =
+
+
+# Dependencies
+OSMESA_LIB_DEPS = -lm -lpthread
+GLU_LIB_DEPS = -L$(TOP)/$(LIB_DIR) -l$(OSMESA_LIB)
+APP_LIB_DEPS = -lOSMesa -lGLU
