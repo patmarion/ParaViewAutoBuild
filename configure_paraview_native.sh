@@ -6,7 +6,7 @@ osmesa_install_dir=$3
 python_install_dir=$4
 cmake_command=$5
 
-$use_x=1
+use_x=1
 
 $cmake_command \
 -DBUILD_SHARED_LIBS=1 \

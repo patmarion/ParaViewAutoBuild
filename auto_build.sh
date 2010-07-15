@@ -204,6 +204,7 @@ do_paraview_download()
 mkdir -p $base/source/paraview
 cd $base/source/paraview
 rm -rf ParaView
+
 $git_command clone git://paraview.org/ParaView.git
 #$git_command clone home:/source/paraview/ParaView
 cd ParaView
