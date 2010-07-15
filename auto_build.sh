@@ -1,5 +1,5 @@
 base=$HOME/source/auto_build
-base=/scratch/pmarion/autobuild
+base=/scratch/pmarion/eureka_autobuild
 
 toolchain_file=BlueGeneP-xl-static.cmake
 
@@ -19,14 +19,11 @@ paraview_xinstall_dir=$xinstall_base/paraview
 use_wget=0
 broken_git_install=0
 
-#c_compiler=/opt/ibmcmp/vac/bg/8.0/bin/blrts_xlc
-#cxx_compiler=/opt/ibmcmp/vacpp/bg/8.0/bin/blrts_xlC
+#c_cross_compiler=/opt/ibmcmp/vac/bg/8.0/bin/blrts_xlc
+#cxx_cross_compiler=/opt/ibmcmp/vacpp/bg/8.0/bin/blrts_xlC
 
-c_compiler=bgxlc
-cxx_compiler=bgxlC
-
-mpi_c_compiler=mpixlc
-mpi_cxx_compiler=mpixlcxx
+c_cross_compiler=bgxlc
+cxx_cross_compiler=bgxlC
 
 
 if [ $broken_git_install -eq 1 ]; then
@@ -38,8 +35,6 @@ fi
 cmake_command=$cmake_install_dir/bin/cmake
 toolchain_file=$base/toolchains/$toolchain_file
 
-#cmake_patch_file=
-cmake_patch_file=cmake-fix-bootstrap.patch
 
 # Get full path to this script
 cd `dirname $0`
@@ -71,30 +66,38 @@ cd $package
 $make_command && make install
 }
 
-do_cmake()
+
+do_cmake_next()
 {
 rm -rf $base/source/cmake
 mkdir -p $base/source/cmake
 cd $base/source/cmake
-package=cmake-2.8.2
-grab http://www.cmake.org/files/v2.8 $package.tar.gz
-tar -zxf $package.tar.gz
 
-if [ "$cmake_patch_file" ]; then
-    cd $package
-    cp $script_dir/$cmake_patch_file ./
-    $git_command apply $cmake_patch_file
-    cd ..
-fi
-
+$git_command clone -b next git://cmake.org/cmake.git CMakeNext
 mkdir build
 cd build
-../$package/bootstrap --prefix=$cmake_install_dir
+../CMakeNext/bootstrap --prefix=$cmake_install_dir
 $make_command && make install
 
 # install extra platform files, this can be removed when they are part of cmake
 cp $script_dir/cmake-platform-files/* $cmake_install_dir/share/cmake-2.8/Modules/Platform/
 }
+
+do_cmake()
+{
+rm -rf $base/source/cmake
+mkdir -p $base/source/cmake
+cd $base/source/cmake
+
+package=cmake-2.8.2
+grab http://www.cmake.org/files/v2.8 $package.tar.gz
+tar -zxf $package.tar.gz
+mkdir build
+cd build
+../$package/bootstrap --prefix=$cmake_install_dir
+$make_command && make install
+}
+
 
 do_toolchains()
 {
@@ -106,7 +109,8 @@ cp $script_dir/toolchains/$fname ./
 sed -i -e "s|XINSTALL_DIR|$xinstall_base|g" $toolchain_file 
 }
 
-do_python_cross()
+
+do_python_download()
 {
 rm -rf $base/source/python
 mkdir -p $base/source/python
@@ -114,8 +118,30 @@ cd $base/source/python
 package=Python-2.5.2
 grab http://www.python.org/ftp/python/2.5.2 $package.tgz
 tar -zxf $package.tgz
+}
+
+do_python_build_native()
+{
+cd $base/source/python
+source=Python-2.5.2
+mkdir build-native
+cd build-native
+../$source/configure --prefix=$python_install_dir --enable-shared
+$make_command && make install
+}
+
+
+do_python_build_cross()
+{
+cd $base/source/python
+source=Python-2.5.2
+rm -rf $source-cmakeified
+cp -r $source $source-cmakeified
+source=$source-cmakeified
 cp $script_dir/add_cmake_files_to_python2-5-2.patch ./
-patch -p1 -d $package < add_cmake_files_to_python2-5-2.patch
+patch -p1 -d $source < add_cmake_files_to_python2-5-2.patch
+
+rm -rf build-xlc
 mkdir build-xlc
 cd build-xlc
 
@@ -131,32 +157,15 @@ $cmake_command \
   -DHAVE_SETGROUPS:BOOL=0 \
   -DENABLE_IPV6:BOOL=0 \
   -DCMAKE_INSTALL_PREFIX=$python_xinstall_dir \
-  -C ../$package/CMake/TryRunResults-Python-bgl-gcc.cmake \
-  ../$package
+  -C ../$source/CMake/TryRunResults-Python-bgl-gcc.cmake \
+  ../$source
 
 $make_command && make install
 
-
 }
 
-do_python_native()
-{
-package=Python-2.5.2
-cd $base/source/python
-mkdir build-native
-cd build-native
-../$package/configure --prefix=$python_install_dir --enable-shared
-$make_command && make install
 
-}
-
-do_python()
-{
-do_python_cross
-do_python_native
-}
-
-do_osmesa_cross()
+do_osmesa_download()
 {
 rm -rf $base/source/mesa
 mkdir -p $base/source/mesa
@@ -164,17 +173,9 @@ cd $base/source/mesa
 package=MesaLib-7.0.4
 grab http://downloads.sourceforge.net/project/mesa3d/MesaLib/7.0.4 $package.tar.gz
 tar -zxf $package.tar.gz
-
-cp -r Mesa-7.0.4 build-xlc
-cd build-xlc
-sed -i.original -e 's|INSTALL_DIR = /usr/local|INSTALL_DIR = '$osmesa_xinstall_dir'|g' configs/default
-sed -i.original -e 's|CC = .*|CC = '$c_compiler'|g' configs/bluegene-xlc-osmesa
-sed -i.original -e 's|CXX = .*|CXX = '$cxx_compiler'|g' configs/bluegene-xlc-osmesa
-
-$make_command bluegene-xlc-osmesa && make install
 }
 
-do_osmesa_native()
+do_osmesa_build_native()
 {
 cd $base/source/mesa
 rm -rf build-native
@@ -186,10 +187,16 @@ sed -i.original -e 's|INSTALL_DIR = /usr/local|INSTALL_DIR = '$osmesa_install_di
 $make_command linux-osmesa && make install
 }
 
-do_osmesa()
+do_osmesa_build_cross()
 {
-do_osmesa_cross
-do_osmesa_native
+cd $base/source/mesa
+rm -rf build-xlc
+cp -r Mesa-7.0.4 build-xlc
+cd build-xlc
+sed -i.original -e 's|INSTALL_DIR = /usr/local|INSTALL_DIR = '$osmesa_xinstall_dir'|g' configs/default
+sed -i.original -e 's|CC = .*|CC = '$c_cross_compiler'|g' configs/bluegene-xlc-osmesa
+sed -i.original -e 's|CXX = .*|CXX = '$cxx_cross_compiler'|g' configs/bluegene-xlc-osmesa
+$make_command bluegene-xlc-osmesa && make install
 }
 
 do_paraview_download()
@@ -224,12 +231,22 @@ $git_command apply $patch_file
 
 }
 
+
 do_paraview_configure_native()
 {
 rm -rf $base/source/paraview/build-native
 mkdir -p $base/source/paraview/build-native
 cd $base/source/paraview/build-native
 bash $script_dir/configure_paraview_native.sh ../ParaView $paraview_install_dir $osmesa_install_dir $python_install_dir $cmake_command
+}
+
+
+do_paraview_configure_hosttools()
+{
+rm -rf $base/source/paraview/build-hosttools
+mkdir -p $base/source/paraview/build-hosttools
+cd $base/source/paraview/build-hosttools
+bash $script_dir/configure_paraview_hosttools.sh ../ParaView $paraview_install_dir $osmesa_install_dir $python_install_dir $cmake_command
 }
 
 do_paraview_configure_cross()
@@ -240,38 +257,56 @@ cd $base/source/paraview/build-xlc
 bash $script_dir/configure_paraview_xlc.sh ../ParaView $paraview_xinstall_dir $osmesa_xinstall_dir $python_xinstall_dir $cmake_command $toolchain_file $base/source/paraview/build-native
 }
 
-
 do_paraview_build_native()
 {
 cd $base/source/paraview/build-native
-#$make_command && make install
+$make_command
+}
+
+do_paraview_build_hosttools()
+{
+cd $base/source/paraview/build-hosttools
 $make_command pvHostTools
 }
 
 do_paraview_build_cross()
 {
 cd $base/source/paraview/build-xlc
-$make_command && make install
+$make_command
 }
 
-do_paraview()
+
+do_native()
 {
+do_git
+#do_cmake
+do_cmake_next
+do_python_download
+do_python_build_native
+do_osmesa_download
+do_osmesa_build_native
 do_paraview_download
 do_paraview_configure_native
 do_paraview_build_native
+}
+
+do_cross()
+{
+do_toolchains
+do_python_build_cross
+do_osmesa_build_cross
+do_paraview_configure_hosttools
+do_paraview_build_hosttools
 do_paraview_configure_cross
 do_paraview_build_cross
 }
 
 do_all()
 {
-do_git
-do_cmake
-do_toolchains
-do_python
-do_osmesa
-do_paraview
+do_native
+do_cross
 }
+
 
 if [ -z $1 ]
 then
