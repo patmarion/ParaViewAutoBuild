@@ -92,6 +92,10 @@ cd $base/source/cmake
 package=cmake-2.8.2
 grab http://www.cmake.org/files/v2.8 $package.tar.gz
 tar -zxf $package.tar.gz
+
+# Fix FindMPI.cmake for BGL
+patch -p1 -d $package -i $script_dir/find_mpi_fix.diff
+
 mkdir build
 cd build
 ../$package/bootstrap --prefix=$cmake_install_dir
