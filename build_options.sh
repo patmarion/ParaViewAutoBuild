@@ -29,4 +29,4 @@ set_bgp_options()
 }
 
 
-set_$platform_options
+set_${platform}_options
