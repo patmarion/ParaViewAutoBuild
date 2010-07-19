@@ -7,9 +7,8 @@ python_install_dir=$4
 cmake_command=$5
 toolchain_file=$6
 native_build_dir=$7
+cxx_flags=$8
 
-arch=450d
-tune=450
 
 $cmake_command \
 -DCMAKE_TOOLCHAIN_FILE=$toolchain_file \
@@ -37,6 +36,6 @@ $cmake_command \
 -DOSMESA_INCLUDE_DIR="$osmesa_install_dir/include" \
 -DCMAKE_BUILD_TYPE:STRING="Release" \
 -DCMAKE_INSTALL_PREFIX:PATH="$paraview_install_dir" \
--DCMAKE_CXX_FLAGS:STRING="-O3 -qstrict -qarch=$arch -qtune=$tune  -qcpluscmt" \
+-DCMAKE_CXX_FLAGS:STRING="$cxx_flags" \
 -C $paraview_source_dir/CMake/TryRunResults-ParaView3-bgl-xlc.cmake \
 $paraview_source_dir

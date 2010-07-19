@@ -1,9 +1,19 @@
-base=$HOME/source/auto_build
-base=/scratch/pmarion/eureka_autobuild
+#!/bin/bash
 
-toolchain_file=BlueGeneP-xl-static.cmake
 
-make_command="make -j2"
+# Get full path to this script
+cd `dirname $0`
+script_dir=`pwd`
+
+
+# Get build options
+source $script_dir/build_options.sh
+
+if [ -z "$base" ]; then
+  echo "build_options.sh did not specify base directory"
+  exit 1
+fi
+
 
 install_base=$base/install
 xinstall_base=$base/install/xlc
@@ -16,16 +26,6 @@ python_xinstall_dir=$xinstall_base/python-2.5.2
 paraview_install_dir=$install_base/paraview
 paraview_xinstall_dir=$xinstall_base/paraview
 
-use_wget=0
-broken_git_install=0
-
-#c_cross_compiler=/opt/ibmcmp/vac/bg/8.0/bin/blrts_xlc
-#cxx_cross_compiler=/opt/ibmcmp/vacpp/bg/8.0/bin/blrts_xlC
-
-c_cross_compiler=bgxlc
-cxx_cross_compiler=bgxlC
-
-
 if [ $broken_git_install -eq 1 ]; then
     git_command=$base/source/git/git-1.7.1/git
 else
@@ -34,11 +34,6 @@ fi
 
 cmake_command=$cmake_install_dir/bin/cmake
 toolchain_file=$base/toolchains/$toolchain_file
-
-
-# Get full path to this script
-cd `dirname $0`
-script_dir=`pwd`
 
 
 grab()
@@ -67,22 +62,6 @@ $make_command && make install
 }
 
 
-do_cmake_next()
-{
-rm -rf $base/source/cmake
-mkdir -p $base/source/cmake
-cd $base/source/cmake
-
-$git_command clone -b next git://cmake.org/cmake.git CMakeNext
-mkdir build
-cd build
-../CMakeNext/bootstrap --prefix=$cmake_install_dir
-$make_command && make install
-
-# install extra platform files, this can be removed when they are part of cmake
-cp $script_dir/cmake-platform-files/* $cmake_install_dir/share/cmake-2.8/Modules/Platform/
-}
-
 do_cmake()
 {
 rm -rf $base/source/cmake
@@ -100,6 +79,23 @@ mkdir build
 cd build
 ../$package/bootstrap --prefix=$cmake_install_dir
 $make_command && make install
+}
+
+
+do_cmake_git()
+{
+rm -rf $base/source/cmake
+mkdir -p $base/source/cmake
+cd $base/source/cmake
+
+$git_command clone -b next git://cmake.org/cmake.git CMakeNext
+mkdir build
+cd build
+../CMakeNext/bootstrap --prefix=$cmake_install_dir
+$make_command && make install
+
+# install extra platform files, this can be removed when they are part of cmake
+cp $script_dir/cmake-platform-files/* $cmake_install_dir/share/cmake-2.8/Modules/Platform/
 }
 
 
@@ -209,31 +205,46 @@ mkdir -p $base/source/paraview
 cd $base/source/paraview
 rm -rf ParaView
 
-$git_command clone git://paraview.org/ParaView.git
-#$git_command clone home:/source/paraview/ParaView
+package=ParaView-3.8.0
+grab http://paraview.org/files/v3.8/ParaView-3.8.0.tar.gz $package.tar.gz
+tar -zxf $package.tar.gz
+mv $package ParaView
+}
+
+
+do_paraview_download_git()
+{
+mkdir -p $base/source/paraview
+cd $base/source/paraview
+rm -rf ParaView
+
+paraview_git_url=git://paraview.org/ParaView.git
+vtk_git_url=git://vtk.org/VTK.git
+xdmf_git_url=git://paraview.org/Xdmf.git
+icet_git_url=git://paraview.org/IceT.git
+
+paraview_git_url=home:/source/paraview/ParaView
+vtk_git_url=home:/source/paraview/ParaView/VTK
+xdmf_git_url=home:/source/paraview/ParaView/Utilities/Xdmf2
+icet_git_url=home:/source/paraview/ParaView/Utilities/IceT
+
+$git_command clone $paraview_git_url
 cd ParaView
 $git_command submodule init
-#$git_command config submodule.VTK.url home:/source/paraview/ParaView/VTK
-#$git_command config submodule.Xdmf.url home:/source/paraview/ParaView/Utilities/Xdmf2
-#$git_command config submodule.IceT.url home:/source/paraview/ParaView/Utilities/IceT
+$git_command config submodule.VTK.url $vtk_git_url
+$git_command config submodule.Xdmf.url $xdmf_git_url
+$git_command config submodule.IceT.url $icet_git_url
 $git_command submodule update
-
-#cd VTK/.git/hooks
-#$git_command init
-#$git_command pull .. remotes/origin/hooks
-#cd -
-
-mkdir -p VTK/.git/hooks/.git
-touch VTK/.git/hooks/.git/config
 
 mkdir -p .git/hooks/.git
 touch .git/hooks/.git/config
+mkdir -p VTK/.git/hooks/.git
+touch VTK/.git/hooks/.git/config
 
 # Apply patch to workaround ostream problem
 patch_file=paraview-fix-cswrapper.patch
 cp $script_dir/$patch_file ./
 $git_command apply $patch_file
-
 }
 
 
@@ -259,7 +270,7 @@ do_paraview_configure_cross()
 rm -rf $base/source/paraview/build-xlc
 mkdir -p $base/source/paraview/build-xlc
 cd $base/source/paraview/build-xlc
-bash $script_dir/configure_paraview_xlc.sh ../ParaView $paraview_xinstall_dir $osmesa_xinstall_dir $python_xinstall_dir $cmake_command $toolchain_file $base/source/paraview/build-native
+bash $script_dir/configure_paraview_xlc.sh ../ParaView $paraview_xinstall_dir $osmesa_xinstall_dir $python_xinstall_dir $cmake_command $toolchain_file $base/source/paraview/build-hosttools "$paraview_xlc_cxx_flags"
 }
 
 do_paraview_build_native()
@@ -281,22 +292,29 @@ $make_command
 }
 
 
-do_native()
+do_paraview_native_prereqs()
 {
 do_git
-#do_cmake
-do_cmake_next
+do_cmake
+#do_cmake_git
 do_python_download
 do_python_build_native
 do_osmesa_download
 do_osmesa_build_native
 do_paraview_download
+#do_paraview_download_git
+}
+
+do_native()
+{
+do_paraview_native_prereqs
 do_paraview_configure_native
 do_paraview_build_native
 }
 
 do_cross()
 {
+do_paraview_native_prereqs
 do_toolchains
 do_python_build_cross
 do_osmesa_build_cross
