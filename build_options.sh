@@ -1,6 +1,6 @@
 
-platform=bgl
-#platform=bgp
+#platform=bgl
+platform=bgp
 
 set_bgl_options()
 {
@@ -18,7 +18,7 @@ set_bgl_options()
 
 set_bgp_options()
 {
-  base=$HOME/source/autobuild
+  base=/scratch/pmarion/autobuild
   toolchain_file=BlueGeneP-xl-static.cmake
   make_command="make -j2"
   use_wget=0

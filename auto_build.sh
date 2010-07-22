@@ -241,10 +241,18 @@ touch .git/hooks/.git/config
 mkdir -p VTK/.git/hooks/.git
 touch VTK/.git/hooks/.git/config
 
-# Apply patch to workaround ostream problem
-patch_file=paraview-fix-cswrapper.patch
-cp $script_dir/$patch_file ./
-$git_command apply $patch_file
+if [ $platform = bgp ]; then
+  # Apply patch to workaround ostream problem
+  patch_file=paraview-fix-cswrapper.patch
+  cp $script_dir/$patch_file ./
+  $git_command apply $patch_file
+
+  # Don't disable HAVE_PTHREAD on bgp
+  patch_file=paraview-bgp-have-pthread.patch
+  cp $script_dir/$patch_file ./
+  $git_command apply $patch_file
+fi
+
 }
 
 
@@ -295,14 +303,14 @@ $make_command
 do_paraview_native_prereqs()
 {
 do_git
-do_cmake
-#do_cmake_git
+#do_cmake
+do_cmake_git
 do_python_download
 do_python_build_native
 do_osmesa_download
 do_osmesa_build_native
-do_paraview_download
-#do_paraview_download_git
+#do_paraview_download
+do_paraview_download_git
 }
 
 do_native()
