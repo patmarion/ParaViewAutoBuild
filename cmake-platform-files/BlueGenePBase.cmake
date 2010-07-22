@@ -56,20 +56,20 @@ set(CMAKE_DL_LIBS "dl")
 # We can't support both static and dynamic links in the same platform file.  The
 # dynamic link platform file needs to call this explicitly to set up dynamic linking.
 #
-macro(set_bgp_shlib_flags)
+macro(set_bgp_dynamic_flags)
   foreach(lang ${BGP_LANGUAGES})
     if (CMAKE_${lang}_COMPILER_ID STREQUAL XL)
       # Flags for XL compilers if we explicitly detected XL
       set(CMAKE_SHARED_LIBRARY_${lang}_FLAGS "-qpic")                            # -pic 
       set(CMAKE_SHARED_LIBRARY_CREATE_${lang}_FLAGS "-qmkshrobj -qnostaticlink") # -shared
       set(CMAKE_SHARED_LIBRARY_RUNTIME_${lang}_FLAG "-Wl,-rpath,")               # -rpath
-      set(BGP_${lang}_DYNAMIC_EXE_FLAGS "-Wl,-relax -qnostaticlink -qnostaticlink=libgcc")
+      set(BGP_${lang}_DYNAMIC_EXE_FLAGS "-qnostaticlink -qnostaticlink=libgcc")
     else()
       # Assume flags for GNU compilers (if the ID is GNU *or* anything else).
       set(CMAKE_SHARED_LIBRARY_${lang}_FLAGS "-fPIC")               # -pic 
       set(CMAKE_SHARED_LIBRARY_CREATE_${lang}_FLAGS "-shared")      # -shared
       set(CMAKE_SHARED_LIBRARY_RUNTIME_${lang}_FLAG "-Wl,-rpath,")  # -rpath
-      set(BGP_${lang}_DYNAMIC_EXE_FLAGS "-Wl,-relax -dynamic")
+      set(BGP_${lang}_DYNAMIC_EXE_FLAGS "-dynamic")
     endif()
     
     set(CMAKE_SHARED_LIBRARY_LINK_${lang}_FLAGS        "") # +s, flag for exe link to use shared lib
@@ -78,8 +78,20 @@ macro(set_bgp_shlib_flags)
     set(BGP_${lang}_DEFAULT_EXE_FLAGS
       "<FLAGS> <CMAKE_${lang}_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>")
     set(CMAKE_${lang}_LINK_EXECUTABLE 
-      "<CMAKE_${lang}_COMPILER> ${BGP_${lang}_DYNAMIC_EXE_FLAGS} ${BGP_${lang}_DEFAULT_EXE_FLAGS}")
+      "<CMAKE_${lang}_COMPILER> -Wl,-relax ${BGP_${lang}_DYNAMIC_EXE_FLAGS} ${BGP_${lang}_DEFAULT_EXE_FLAGS}")
   endforeach()
 endmacro()
 
 
+#
+# This macro needs to be called for static builds.  Right now it just adds -Wl,-relax 
+# to the link line.
+#
+macro(set_bgp_static_flags) 
+  foreach(lang ${BGP_LANGUAGES})
+    set(BGP_${lang}_DEFAULT_EXE_FLAGS
+      "<FLAGS> <CMAKE_${lang}_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>")
+    set(CMAKE_${lang}_LINK_EXECUTABLE 
+      "<CMAKE_${lang}_COMPILER> -Wl,-relax ${BGP_${lang}_DEFAULT_EXE_FLAGS}")
+  endforeach()
+endmacro()
