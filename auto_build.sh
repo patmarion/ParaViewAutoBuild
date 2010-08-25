@@ -223,13 +223,16 @@ vtk_git_url=git://vtk.org/VTK.git
 xdmf_git_url=git://paraview.org/Xdmf.git
 icet_git_url=git://paraview.org/IceT.git
 
-paraview_git_url=home:/source/paraview/ParaView
-vtk_git_url=home:/source/paraview/ParaView/VTK
-xdmf_git_url=home:/source/paraview/ParaView/Utilities/Xdmf2
-icet_git_url=home:/source/paraview/ParaView/Utilities/IceT
+#paraview_git_url=home:/source/paraview/ParaView
+#vtk_git_url=home:/source/paraview/ParaView/VTK
+#xdmf_git_url=home:/source/paraview/ParaView/Utilities/Xdmf2
+#icet_git_url=home:/source/paraview/ParaView/Utilities/IceT
 
 $git_command clone $paraview_git_url
 cd ParaView
+
+$git_command reset --hard bfa4f6c3
+
 $git_command submodule init
 $git_command config submodule.VTK.url $vtk_git_url
 $git_command config submodule.Xdmf.url $xdmf_git_url
@@ -322,7 +325,6 @@ do_paraview_build_native
 
 do_cross()
 {
-do_paraview_native_prereqs
 do_toolchains
 do_python_build_cross
 do_osmesa_build_cross
