@@ -95,7 +95,7 @@ cd build
 $make_command && make install
 
 # install extra platform files, this can be removed when they are part of cmake
-cp $script_dir/cmake-platform-files/* $cmake_install_dir/share/cmake-2.8/Modules/Platform/
+#cp $script_dir/cmake-platform-files/* $cmake_install_dir/share/cmake-2.8/Modules/Platform/
 }
 
 
