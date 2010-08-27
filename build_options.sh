@@ -1,6 +1,7 @@
 
 #platform=bgl
-platform=bgp
+#platform=bgp
+platform=eureka
 
 set_bgl_options()
 {
@@ -28,5 +29,13 @@ set_bgp_options()
   paraview_xlc_cxx_flags="-O3 -qstrict -qarch=450d -qtune=450 -qcpluscmt"
 }
 
+
+set_eureka_options()
+{
+  base=/scratch/pmarion/test_build
+  make_command="make -j2"
+  use_wget=0
+  broken_git_install=0
+}
 
 set_${platform}_options
