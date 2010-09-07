@@ -196,6 +196,7 @@ cd build-xlc
 sed -i.original -e 's|INSTALL_DIR = /usr/local|INSTALL_DIR = '$osmesa_xinstall_dir'|g' configs/default
 sed -i.original -e 's|CC = .*|CC = '$c_cross_compiler'|g' configs/bluegene-xlc-osmesa
 sed -i.original -e 's|CXX = .*|CXX = '$cxx_cross_compiler'|g' configs/bluegene-xlc-osmesa
+sed -i.original -e 's|-O3|-O2|g' configs/bluegene-xlc-osmesa
 $make_command bluegene-xlc-osmesa && make install
 }
 
