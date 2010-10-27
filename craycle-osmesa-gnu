@@ -19,6 +19,7 @@ CXXFLAGS = -target=linux -O2 -ffast-math -D_POSIX_SOURCE -D_POSIX_C_SOURCE=19930
 MKLIB_OPTIONS = -static
 
 OSMESA_LIB_NAME = libOSMesa.a
+GLU_LIB_NAME = libGLU.a
 
 # Directories
 SRC_DIRS = mesa glu
