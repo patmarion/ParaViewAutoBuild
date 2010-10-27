@@ -13,6 +13,7 @@ $cmake_command \
 -DPARAVIEW_BUILD_QT_GUI=0 \
 -DENABLE_MPI4PY=0 \
 -DPARAVIEW_BUILD_PLUGIN_pvblot=0 \
+-DVTK_USE_RPATH:BOOL=ON \
 -DVTK_USE_X=0 \
 -DBUILD_TESTING=0 \
 -DPYTHON_EXECUTABLE="$python_install_dir/bin/python" \

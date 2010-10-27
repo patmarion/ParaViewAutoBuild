@@ -16,11 +16,11 @@ fi
 
 
 install_base=$base/install
-xinstall_base=$base/install/xlc
-git_install_dir=$install_base/git-1.7.1
+xinstall_base=$base/install/cross
+git_install_dir=$install_base/git-1.7.3
 cmake_install_dir=$install_base/cmake-2.8.2
-osmesa_install_dir=$install_base/osmesa-7.0.2
-osmesa_xinstall_dir=$xinstall_base/osmesa-7.0.2
+osmesa_install_dir=$install_base/osmesa-7.6.1
+osmesa_xinstall_dir=$xinstall_base/osmesa-7.6.1
 python_install_dir=$install_base/python-2.5.2
 python_xinstall_dir=$xinstall_base/python-2.5.2
 paraview_install_dir=$install_base/paraview
@@ -35,6 +35,15 @@ fi
 cmake_command=$cmake_install_dir/bin/cmake
 toolchain_file=$base/toolchains/$toolchain_file
 
+setup_native_compilers()
+{
+module unload PrgEnv-pgi Base-opts
+}
+
+setup_cross_compilers()
+{
+module load PrgEnv-pgi Base-opts
+}
 
 grab()
 {
@@ -53,7 +62,7 @@ do_git()
 rm -rf $base/source/git
 mkdir -p $base/source/git
 cd $base/source/git
-package=git-1.7.1
+package=git-1.7.3
 grab http://kernel.org/pub/software/scm/git $package.tar.gz
 tar -zxf $package.tar.gz
 cd $package
@@ -79,6 +88,9 @@ mkdir build
 cd build
 ../$package/bootstrap --prefix=$cmake_install_dir
 $make_command && make install
+
+# install extra platform files, this can be removed when they are part of cmake
+cp $script_dir/cmake-platform-files/* $cmake_install_dir/share/cmake-2.8/Modules/Platform/
 }
 
 
@@ -112,11 +124,11 @@ sed -i -e "s|XINSTALL_DIR|$xinstall_base|g" $toolchain_file
 
 do_python_download()
 {
-rm -rf $base/source/python
 mkdir -p $base/source/python
 cd $base/source/python
 package=Python-2.5.2
 grab http://www.python.org/ftp/python/2.5.2 $package.tgz
+rm -rf $package
 tar -zxf $package.tgz
 }
 
@@ -124,6 +136,7 @@ do_python_build_native()
 {
 cd $base/source/python
 source=Python-2.5.2
+rm -rf build-native
 mkdir build-native
 cd build-native
 ../$source/configure --prefix=$python_install_dir --enable-shared
@@ -141,9 +154,9 @@ source=$source-cmakeified
 cp $script_dir/add_cmake_files_to_python2-5-2.patch ./
 patch -p1 -d $source < add_cmake_files_to_python2-5-2.patch
 
-rm -rf build-xlc
-mkdir build-xlc
-cd build-xlc
+rm -rf build-cross
+mkdir build-cross
+cd build-cross
 
 # todo - remove PYTHON_BUILD_LIB_SHARED=0
 # it is here for bg/p which finds libdl and sets
@@ -153,6 +166,7 @@ $cmake_command \
   -DCMAKE_TOOLCHAIN_FILE=$toolchain_file \
   -DCMAKE_BUILD_TYPE:STRING=Release \
   -DPYTHON_BUILD_LIB_SHARED:BOOL=0 \
+  -DWITH_THREAD:BOOL=0 \
   -DHAVE_GETGROUPS:BOOL=0 \
   -DHAVE_SETGROUPS:BOOL=0 \
   -DENABLE_IPV6:BOOL=0 \
@@ -167,11 +181,12 @@ $make_command && make install
 
 do_osmesa_download()
 {
-rm -rf $base/source/mesa
 mkdir -p $base/source/mesa
 cd $base/source/mesa
-package=MesaLib-7.0.4
-grab http://downloads.sourceforge.net/project/mesa3d/MesaLib/7.0.4 $package.tar.gz
+package=MesaLib-7.6.1
+grab ftp://ftp.freedesktop.org/pub/mesa/7.6.1 $package.tar.gz
+
+rm -rf Mesa-7.6.1
 tar -zxf $package.tar.gz
 }
 
@@ -179,7 +194,7 @@ do_osmesa_build_native()
 {
 cd $base/source/mesa
 rm -rf build-native
-cp -r Mesa-7.0.4 build-native
+cp -r Mesa-7.6.1 build-native
 cd build-native
 cp configs/linux-osmesa configs/linux-osmesa.original
 cp $script_dir/linux-osmesa configs/linux-osmesa
@@ -190,14 +205,21 @@ $make_command linux-osmesa && make install
 do_osmesa_build_cross()
 {
 cd $base/source/mesa
-rm -rf build-xlc
-cp -r Mesa-7.0.4 build-xlc
-cd build-xlc
+rm -rf build-cross
+cp -r Mesa-7.6.1 build-cross
+cd build-cross
+
+osmesa_config_name=craycle-osmesa-gnu
+cp $script_dir/$osmesa_config_name configs/
+
 sed -i.original -e 's|INSTALL_DIR = /usr/local|INSTALL_DIR = '$osmesa_xinstall_dir'|g' configs/default
-sed -i.original -e 's|CC = .*|CC = '$c_cross_compiler'|g' configs/bluegene-xlc-osmesa
-sed -i.original -e 's|CXX = .*|CXX = '$cxx_cross_compiler'|g' configs/bluegene-xlc-osmesa
-sed -i.original -e 's|-O3|-O2|g' configs/bluegene-xlc-osmesa
-$make_command bluegene-xlc-osmesa && make install
+sed -i.original -e 's|linux-osmesa-static|'$osmesa_config_name'|g' Makefile
+
+#sed -i.original -e 's|CC = .*|CC = '$c_cross_compiler'|g' configs/$osmesa_config_name
+#sed -i.original -e 's|CXX = .*|CXX = '$cxx_cross_compiler'|g' configs/$osmesa_config_name
+#sed -i.original -e 's|-O3|-O2|g' configs/$osmesa_config_name
+
+$make_command $osmesa_config_name && make install
 }
 
 do_paraview_download()
@@ -279,10 +301,10 @@ bash $script_dir/configure_paraview_hosttools.sh ../ParaView $paraview_install_d
 
 do_paraview_configure_cross()
 {
-rm -rf $base/source/paraview/build-xlc
-mkdir -p $base/source/paraview/build-xlc
-cd $base/source/paraview/build-xlc
-bash $script_dir/configure_paraview_xlc.sh ../ParaView $paraview_xinstall_dir $osmesa_xinstall_dir $python_xinstall_dir $cmake_command $toolchain_file $base/source/paraview/build-hosttools "$paraview_xlc_cxx_flags"
+rm -rf $base/source/paraview/build-cross
+mkdir -p $base/source/paraview/build-cross
+cd $base/source/paraview/build-cross
+bash $script_dir/configure_paraview_cross.sh ../ParaView $paraview_xinstall_dir $osmesa_xinstall_dir $python_xinstall_dir $cmake_command $toolchain_file $base/source/paraview/build-hosttools "$paraview_cross_cxx_flags"
 }
 
 do_paraview_build_native()
@@ -299,7 +321,7 @@ $make_command pvHostTools
 
 do_paraview_build_cross()
 {
-cd $base/source/paraview/build-xlc
+cd $base/source/paraview/build-cross
 $make_command
 }
 
@@ -307,14 +329,14 @@ $make_command
 do_paraview_native_prereqs()
 {
 do_git
-#do_cmake
-do_cmake_git
+do_cmake
+#do_cmake_git
 do_python_download
 do_python_build_native
 do_osmesa_download
 do_osmesa_build_native
-#do_paraview_download
-do_paraview_download_git
+do_paraview_download
+#do_paraview_download_git
 }
 
 do_native()
@@ -326,6 +348,7 @@ do_paraview_build_native
 
 do_cross()
 {
+do_paraview_native_prereqs
 do_toolchains
 do_python_build_cross
 do_osmesa_build_cross
@@ -337,8 +360,9 @@ do_paraview_build_cross
 
 do_all()
 {
-do_native
 do_cross
+do_paraview_configure_native
+do_paraview_build_native
 }
 
 
