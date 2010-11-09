@@ -26,12 +26,7 @@ python_xinstall_dir=$xinstall_base/python-2.5.2
 paraview_install_dir=$install_base/paraview
 paraview_xinstall_dir=$xinstall_base/paraview
 
-if [ $broken_git_install -eq 1 ]; then
-    git_command=$base/source/git/git-1.7.1/git
-else
-    git_command=$git_install_dir/bin/git
-fi
-
+git_command=$git_install_dir/bin/git
 cmake_command=$cmake_install_dir/bin/cmake
 toolchain_file=$base/toolchains/$toolchain_file
 
