@@ -32,12 +32,12 @@ toolchain_file=$base/toolchains/$toolchain_file
 
 setup_native_compilers()
 {
-module unload PrgEnv-pgi Base-opts
+module unload PrgEnv-pgi PrgEnv-gnu Base-opts
 }
 
 setup_cross_compilers()
 {
-module load PrgEnv-pgi Base-opts
+module load Base-opts PrgEnv-gnu
 }
 
 grab()
@@ -343,28 +343,28 @@ do_paraview_build_native
 
 do_cross()
 {
+setup_native_compilers
 do_paraview_native_prereqs
+do_paraview_configure_hosttools
+do_paraview_build_hosttools
+setup_cross_compilers
+
 do_toolchains
 do_python_build_cross
 do_osmesa_build_cross
-do_paraview_configure_hosttools
-do_paraview_build_hosttools
 do_paraview_configure_cross
 do_paraview_build_cross
 }
 
-do_all()
-{
-do_cross
-do_paraview_configure_native
-do_paraview_build_native
-}
 
+# this line is needed so that the "module" command will work
+source /opt/modules/default/init/bash
 
 if [ -z $1 ]
 then
   set -x
-  do_all
+  echo "Please specify a build step."
+  exit 1
 else
   set -x
   $1
