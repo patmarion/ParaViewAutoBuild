@@ -18,7 +18,7 @@ fi
 install_base=$base/install
 xinstall_base=$base/install/cross
 git_install_dir=$install_base/git-1.7.3
-cmake_install_dir=$install_base/cmake-2.8.2
+cmake_install_dir=$install_base/cmake-2.8.3
 osmesa_install_dir=$install_base/osmesa-7.6.1
 osmesa_xinstall_dir=$xinstall_base/osmesa-7.6.1
 python_install_dir=$install_base/python-2.5.2
@@ -72,19 +72,16 @@ rm -rf $base/source/cmake
 mkdir -p $base/source/cmake
 cd $base/source/cmake
 
-package=cmake-2.8.2
+package=cmake-2.8.3
 grab http://www.cmake.org/files/v2.8 $package.tar.gz
 tar -zxf $package.tar.gz
-
-# Fix FindMPI.cmake for BGL
-patch -p1 -d $package -i $script_dir/find_mpi_fix.diff
 
 mkdir build
 cd build
 ../$package/bootstrap --prefix=$cmake_install_dir
 $make_command && make install
 
-# install extra platform files, this can be removed when they are part of cmake
+# install extra platform files
 cp $script_dir/cmake-platform-files/* $cmake_install_dir/share/cmake-2.8/Modules/Platform/
 }
 
@@ -101,8 +98,8 @@ cd build
 ../CMakeNext/bootstrap --prefix=$cmake_install_dir
 $make_command && make install
 
-# install extra platform files, this can be removed when they are part of cmake
-#cp $script_dir/cmake-platform-files/* $cmake_install_dir/share/cmake-2.8/Modules/Platform/
+# install extra platform files
+cp $script_dir/cmake-platform-files/* $cmake_install_dir/share/cmake-2.8/Modules/Platform/
 }
 
 
