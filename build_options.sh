@@ -1,9 +1,9 @@
 
 #platform=bgl
-#platform=bgp
+platform=bgp
 #platform=eureka
 #platform=jaguarpf
-platform=jaguarpfgcc
+#platform=jaguarpfgcc
 
 set_bgl_options()
 {
@@ -13,20 +13,22 @@ set_bgl_options()
   use_wget=0
   c_cross_compiler=/opt/ibmcmp/vac/bg/8.0/bin/blrts_xlc
   cxx_cross_compiler=/opt/ibmcmp/vacpp/bg/8.0/bin/blrts_xlC
-  paraview_cross_cxx_flags="-O3 -qstrict -qarch=440 -qtune=440 -qcpluscmt"
+  paraview_cross_cxx_flags="-O2 -qstrict -qarch=440 -qtune=440 -qcpluscmt"
+  osmesa_config_name=bgl-osmesa-xlc
 }
 
 
 
 set_bgp_options()
 {
-  base=/scratch/pmarion/autobuild
+  base=/scratch/pmarion/build-bgp
   toolchain_file=BlueGeneP-xl-static.cmake
   make_command="make -j2"
   use_wget=0
   c_cross_compiler=bgxlc
   cxx_cross_compiler=bgxlC
-  paraview_cross_cxx_flags="-O3 -qstrict -qarch=450d -qtune=450 -qcpluscmt"
+  paraview_cross_cxx_flags="-O2 -qstrict -qarch=450d -qtune=450 -qcpluscmt"
+  osmesa_config_name=bgp-osmesa-xlc
 }
 
 
@@ -46,6 +48,7 @@ set_jaguarpf_options()
   c_cross_compiler=cc
   cxx_cross_compiler=CC
   paraview_cross_cxx_flags="-O2"
+  osmesa_config_name=craycle-osmesa-pgi
 }
 
 set_jaguarpfgcc_options()
@@ -57,6 +60,7 @@ set_jaguarpfgcc_options()
   c_cross_compiler=cc
   cxx_cross_compiler=CC
   paraview_cross_cxx_flags="-O2"
+  osmesa_config_name=craycle-osmesa-gnu
 }
 
 
