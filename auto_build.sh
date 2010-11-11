@@ -201,15 +201,9 @@ rm -rf build-cross
 cp -r Mesa-7.6.1 build-cross
 cd build-cross
 
-osmesa_config_name=craycle-osmesa-gnu
 cp $script_dir/$osmesa_config_name configs/
-
-sed -i.original -e 's|INSTALL_DIR = /usr/local|INSTALL_DIR = '$osmesa_xinstall_dir'|g' configs/default
 sed -i.original -e 's|linux-osmesa-static|'$osmesa_config_name'|g' Makefile
-
-#sed -i.original -e 's|CC = .*|CC = '$c_cross_compiler'|g' configs/$osmesa_config_name
-#sed -i.original -e 's|CXX = .*|CXX = '$cxx_cross_compiler'|g' configs/$osmesa_config_name
-#sed -i.original -e 's|-O3|-O2|g' configs/$osmesa_config_name
+sed -i.original -e 's|INSTALL_DIR = /usr/local|INSTALL_DIR = '$osmesa_xinstall_dir'|g' configs/default
 
 $make_command $osmesa_config_name && make install
 }
@@ -234,30 +228,34 @@ cd $base/source/paraview
 rm -rf ParaView
 
 paraview_git_url=git://paraview.org/ParaView.git
-vtk_git_url=git://vtk.org/VTK.git
-xdmf_git_url=git://paraview.org/Xdmf.git
-icet_git_url=git://paraview.org/IceT.git
 
-#paraview_git_url=home:/source/paraview/ParaView
-#vtk_git_url=home:/source/paraview/ParaView/VTK
-#xdmf_git_url=home:/source/paraview/ParaView/Utilities/Xdmf2
-#icet_git_url=home:/source/paraview/ParaView/Utilities/IceT
-
-$git_command clone $paraview_git_url
+$git_command clone --recursive $paraview_git_url
 cd ParaView
 
-$git_command reset --hard bfa4f6c3
 
-$git_command submodule init
-$git_command config submodule.VTK.url $vtk_git_url
-$git_command config submodule.Xdmf.url $xdmf_git_url
-$git_command config submodule.IceT.url $icet_git_url
-$git_command submodule update
-
+# avoid hooks
 mkdir -p .git/hooks/.git
 touch .git/hooks/.git/config
 mkdir -p VTK/.git/hooks/.git
 touch VTK/.git/hooks/.git/config
+
+
+# get livedata branch
+livedata_paraview_url=git://github.com/patmarion/ParaView.git
+livedata_vtk_url=git://github.com/patmarion/VTK.git
+
+$git_command remote add livedata $livedata_paraview_url
+$git_command fetch livedata
+cd VTK
+$git_command remote add livedata $livedata_vtk_url
+$git_command fetch livedata
+cd ..
+
+$git_command checkout -t livedata/live-data --force
+$git_command submodule update
+
+# this submodule appeared in the latest git master
+rm -rf Utilities/VisItBridge
 
 if [ $platform = bgp ]; then
   # Apply patch to workaround ostream problem
@@ -327,8 +325,8 @@ do_python_download
 do_python_build_native
 do_osmesa_download
 do_osmesa_build_native
-do_paraview_download
-#do_paraview_download_git
+#do_paraview_download
+do_paraview_download_git
 }
 
 do_native()
@@ -340,11 +338,11 @@ do_paraview_build_native
 
 do_cross()
 {
-setup_native_compilers
+#setup_native_compilers
 do_paraview_native_prereqs
 do_paraview_configure_hosttools
 do_paraview_build_hosttools
-setup_cross_compilers
+#setup_cross_compilers
 
 do_toolchains
 do_python_build_cross
@@ -355,7 +353,7 @@ do_paraview_build_cross
 
 
 # this line is needed so that the "module" command will work
-source /opt/modules/default/init/bash
+#source /opt/modules/default/init/bash
 
 if [ -z $1 ]
 then
