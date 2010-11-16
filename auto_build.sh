@@ -214,6 +214,12 @@ package=ParaView-3.8.0
 grab http://paraview.org/files/v3.8/ParaView-3.8.0.tar.gz $package.tar.gz
 tar -zxf $package.tar.gz
 mv $package ParaView
+
+# Don't disable HAVE_PTHREAD
+cd ParaView
+patch_file=paraview-bgp-have-pthread.patch
+cp $script_dir/$patch_file ./
+$git_command apply $patch_file
 }
 
 
@@ -321,8 +327,8 @@ do_python_download
 do_python_build_native
 do_osmesa_download
 do_osmesa_build_native
-#do_paraview_download
-do_paraview_download_git
+do_paraview_download
+#do_paraview_download_git
 }
 
 do_native()
@@ -334,11 +340,11 @@ do_paraview_build_native
 
 do_cross()
 {
-#setup_native_compilers
+setup_native_compilers
 do_paraview_native_prereqs
 do_paraview_configure_hosttools
 do_paraview_build_hosttools
-#setup_cross_compilers
+setup_cross_compilers
 
 do_toolchains
 do_python_build_cross
@@ -349,7 +355,7 @@ do_paraview_build_cross
 
 
 # this line is needed so that the "module" command will work
-#source /opt/modules/default/init/bash
+source /opt/modules/default/init/bash
 
 if [ -z $1 ]
 then

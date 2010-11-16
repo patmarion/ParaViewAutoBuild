@@ -1,9 +1,9 @@
 
 #platform=bgl
-platform=bgp
+#platform=bgp
 #platform=eureka
 #platform=jaguarpf
-#platform=jaguarpfgcc
+platform=jaguarpfgcc
 
 set_bgl_options()
 {
