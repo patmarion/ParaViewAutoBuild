@@ -44,11 +44,7 @@ grab()
 {
 url=$1
 file=$2
-if [ $use_wget -eq 1 ]; then
-    wget $url/$file
-else 
-    cp $script_dir/$file ./
-fi 
+cp $script_dir/$file ./
 }
 
 
