@@ -9,12 +9,9 @@ set(CMAKE_CXX_COMPILER CC)
 # and a directory where you can install your own compiled software
 set(CMAKE_FIND_ROOT_PATH
     /opt/xt-pe/default
-    /opt/cray/mpt/default/xt/seastar/mpich2-pgi
+    $ENV{MPICH_DIR}
     XINSTALL_DIR
   )
-
-#    /opt/mpt/3.5.0/xt/mpich2-pgi
-
 
 # adjust the default behaviour of the FIND_XXX() commands:
 # search headers and libraries in the target environment, search

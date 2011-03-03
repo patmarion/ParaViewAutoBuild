@@ -3,7 +3,8 @@
 #platform=bgp
 #platform=eureka
 #platform=jaguarpf
-platform=jaguarpfgcc
+#platform=jaguarpfgcc
+platform=krakengcc
 
 set_bgl_options()
 {
@@ -35,7 +36,7 @@ set_eureka_options()
 set_jaguarpf_options()
 {
   base=/ccs/proj/tur013/marionp
-  toolchain_file=cray-cnl-pgi-toolchain.cmake
+  toolchain_file=cray-cnl-toolchain.cmake
   make_command="make -j2"
   paraview_cross_cxx_flags="-O2"
   osmesa_config_name=craycle-osmesa-pgi
@@ -44,7 +45,16 @@ set_jaguarpf_options()
 set_jaguarpfgcc_options()
 {
   base=/ccs/proj/tur013/marionp/gccbuild
-  toolchain_file=cray-cnl-gnu-toolchain.cmake
+  toolchain_file=cray-cnl-toolchain.cmake
+  make_command="make -j2"
+  paraview_cross_cxx_flags="-O2"
+  osmesa_config_name=craycle-osmesa-gnu
+}
+
+set_krakengcc_options()
+{
+  base=$HOME/gccbuild
+  toolchain_file=cray-cnl-toolchain.cmake
   make_command="make -j2"
   paraview_cross_cxx_flags="-O2"
   osmesa_config_name=craycle-osmesa-gnu
