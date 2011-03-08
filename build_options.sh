@@ -5,6 +5,7 @@
 #platform=jaguarpf
 #platform=jaguarpfgcc
 platform=krakengcc
+#platform=franklingcc
 
 set_bgl_options()
 {
@@ -15,8 +16,6 @@ set_bgl_options()
   osmesa_config_name=bgl-osmesa-xlc
 }
 
-
-
 set_bgp_options()
 {
   base=/scratch/pmarion/build-bgp
@@ -26,20 +25,10 @@ set_bgp_options()
   osmesa_config_name=bgp-osmesa-xlc
 }
 
-
 set_eureka_options()
 {
   base=/scratch/pmarion/test_build
   make_command="make -j2"
-}
-
-set_jaguarpf_options()
-{
-  base=/ccs/proj/tur013/marionp
-  toolchain_file=cray-cnl-toolchain.cmake
-  make_command="make -j2"
-  paraview_cross_cxx_flags="-O2"
-  osmesa_config_name=craycle-osmesa-pgi
 }
 
 set_jaguarpfgcc_options()
@@ -47,8 +36,8 @@ set_jaguarpfgcc_options()
   base=/ccs/proj/tur013/marionp/gccbuild
   toolchain_file=cray-cnl-toolchain.cmake
   make_command="make -j2"
-  paraview_cross_cxx_flags="-O2"
   osmesa_config_name=craycle-osmesa-gnu
+  cross_compiler_module=PrgEnv-gnu
 }
 
 set_krakengcc_options()
@@ -56,10 +45,18 @@ set_krakengcc_options()
   base=$HOME/gccbuild
   toolchain_file=cray-cnl-toolchain.cmake
   make_command="make -j2"
-  paraview_cross_cxx_flags="-O2"
   osmesa_config_name=craycle-osmesa-gnu
+  cross_compiler_module=PrgEnv-gnu
+}
+
+set_franklingcc_options()
+{
+  base=$SCRATCH/gccbuild
+  toolchain_file=cray-cnl-toolchain.cmake
+  make_command="make -j2"
+  osmesa_config_name=craycle-osmesa-gnu
+  cross_compiler_module=PrgEnv-gnu
 }
 
 
 set_${platform}_options
-

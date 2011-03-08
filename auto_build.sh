@@ -14,11 +14,16 @@ if [ -z "$base" ]; then
   exit 1
 fi
 
+if [ -z "$cross_compiler_module" ]; then
+  echo "build_options.sh did not specify cross_compiler_module"
+  exit 1
+fi
+
 
 install_base=$base/install
 xinstall_base=$base/install/cross
 git_install_dir=$install_base/git-1.7.3
-cmake_install_dir=$install_base/cmake-2.8.3
+cmake_install_dir=$install_base/cmake-2.8.4
 osmesa_install_dir=$install_base/osmesa-7.6.1
 osmesa_xinstall_dir=$xinstall_base/osmesa-7.6.1
 python_install_dir=$install_base/python-2.5.2
@@ -37,7 +42,7 @@ module unload PrgEnv-pgi PrgEnv-gnu Base-opts
 
 setup_cross_compilers()
 {
-module load Base-opts PrgEnv-gnu
+module load Base-opts $cross_compiler_module
 }
 
 grab()
@@ -68,7 +73,7 @@ rm -rf $base/source/cmake
 mkdir -p $base/source/cmake
 cd $base/source/cmake
 
-package=cmake-2.8.3
+package=cmake-2.8.4
 grab http://www.cmake.org/files/v2.8 $package.tar.gz
 tar -zxf $package.tar.gz
 
@@ -160,6 +165,7 @@ $cmake_command \
   -DENABLE_IPV6:BOOL=0 \
   -DCMAKE_INSTALL_PREFIX=$python_xinstall_dir \
   -C ../$source/CMake/TryRunResults-Python-bgl-gcc.cmake \
+  -C $script_dir/python_modules.cmake \
   ../$source
 
 $make_command && make install
@@ -210,16 +216,12 @@ mkdir -p $base/source/paraview
 cd $base/source/paraview
 rm -rf ParaView
 
-package=ParaView-3.8.0
-grab http://paraview.org/files/v3.8/ParaView-3.8.0.tar.gz $package.tar.gz
+package=ParaView-3.10.0-RC1
+grab http://paraview.org/files/v3.8 $package.tar.gz
 tar -zxf $package.tar.gz
 mv $package ParaView
 
-# Don't disable HAVE_PTHREAD
-cd ParaView
-patch_file=paraview-bgp-have-pthread.patch
-cp $script_dir/$patch_file ./
-$git_command apply $patch_file
+cp $script_dir/TryRunResults-ParaView3.8.1-crayxt-gcc.cmake ParaView/CMake/TryRunResults-ParaView3-bgl-xlc.cmake
 }
 
 
@@ -231,46 +233,7 @@ rm -rf ParaView
 
 paraview_git_url=git://paraview.org/ParaView.git
 
-$git_command clone --recursive $paraview_git_url
-cd ParaView
-
-
-# avoid hooks
-mkdir -p .git/hooks/.git
-touch .git/hooks/.git/config
-mkdir -p VTK/.git/hooks/.git
-touch VTK/.git/hooks/.git/config
-
-
-# get livedata branch
-livedata_paraview_url=git://github.com/patmarion/ParaView.git
-livedata_vtk_url=git://github.com/patmarion/VTK.git
-
-$git_command remote add livedata $livedata_paraview_url
-$git_command fetch livedata
-cd VTK
-$git_command remote add livedata $livedata_vtk_url
-$git_command fetch livedata
-cd ..
-
-$git_command checkout -t livedata/live-data --force
-$git_command submodule update
-
-# this submodule appeared in the latest git master
-rm -rf Utilities/VisItBridge
-
-if [ $platform = bgp ]; then
-  # Apply patch to workaround ostream problem
-  patch_file=paraview-fix-cswrapper.patch
-  cp $script_dir/$patch_file ./
-  $git_command apply $patch_file
-
-  # Don't disable HAVE_PTHREAD on bgp
-  patch_file=paraview-bgp-have-pthread.patch
-  cp $script_dir/$patch_file ./
-  $git_command apply $patch_file
-fi
-
+$git_command clone -o kitware -b release --recursive $paraview_git_url
 }
 
 
@@ -327,8 +290,8 @@ do_python_download
 do_python_build_native
 do_osmesa_download
 do_osmesa_build_native
-do_paraview_download
-#do_paraview_download_git
+#do_paraview_download
+do_paraview_download_git
 }
 
 do_native()
