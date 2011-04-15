@@ -18,7 +18,7 @@ fi
 install_base=$base/install
 xinstall_base=$base/install/cross
 git_install_dir=$install_base/git-1.7.3
-cmake_install_dir=$install_base/cmake-2.8.3
+cmake_install_dir=$install_base/cmake-2.8.4
 osmesa_install_dir=$install_base/osmesa-7.6.1
 osmesa_xinstall_dir=$xinstall_base/osmesa-7.6.1
 python_install_dir=$install_base/python-2.5.2
@@ -30,15 +30,6 @@ git_command=$git_install_dir/bin/git
 cmake_command=$cmake_install_dir/bin/cmake
 toolchain_file=$base/toolchains/$toolchain_file
 
-setup_native_compilers()
-{
-module unload PrgEnv-pgi PrgEnv-gnu Base-opts
-}
-
-setup_cross_compilers()
-{
-module load Base-opts PrgEnv-gnu
-}
 
 grab()
 {
@@ -68,7 +59,7 @@ rm -rf $base/source/cmake
 mkdir -p $base/source/cmake
 cd $base/source/cmake
 
-package=cmake-2.8.3
+package=cmake-2.8.4
 grab http://www.cmake.org/files/v2.8 $package.tar.gz
 tar -zxf $package.tar.gz
 
@@ -160,6 +151,7 @@ $cmake_command \
   -DENABLE_IPV6:BOOL=0 \
   -DCMAKE_INSTALL_PREFIX=$python_xinstall_dir \
   -C ../$source/CMake/TryRunResults-Python-bgl-gcc.cmake \
+  -C $script_dir/python_modules.cmake \
   ../$source
 
 $make_command && make install
@@ -204,16 +196,31 @@ sed -i.original -e 's|INSTALL_DIR = /usr/local|INSTALL_DIR = '$osmesa_xinstall_d
 $make_command $osmesa_config_name && make install
 }
 
+
 do_paraview_download()
 {
 mkdir -p $base/source/paraview
 cd $base/source/paraview
 rm -rf ParaView
 
-package=ParaView-3.8.0
-grab http://paraview.org/files/v3.8/ParaView-3.8.0.tar.gz $package.tar.gz
+package=ParaView-3.10.1
+grab http://paraview.org/files/v3.10 $package.tar.gz
 tar -zxf $package.tar.gz
 mv $package ParaView
+
+if [ $platform = bgp ]; then
+  # Apply patch to workaround ostream problem
+  patch_file=paraview-fix-cswrapper.patch
+  cp $script_dir/$patch_file ./
+  $git_command apply $patch_file
+
+  # Don't disable HAVE_PTHREAD on bgp
+  patch_file=paraview-bgp-have-pthread.patch
+  cp $script_dir/$patch_file ./
+  $git_command apply $patch_file
+fi
+
+#cp $script_dir/TryRunResults-ParaView3.8.1-crayxt-gcc.cmake ParaView/CMake/TryRunResults-ParaView3-bgl-xlc.cmake
 }
 
 
@@ -314,7 +321,7 @@ $make_command
 
 do_paraview_native_prereqs()
 {
-do_git
+#do_git
 do_cmake
 #do_cmake_git
 do_python_download
@@ -322,7 +329,7 @@ do_python_build_native
 do_osmesa_download
 do_osmesa_build_native
 #do_paraview_download
-do_paraview_download_git
+do_paraview_download
 }
 
 do_native()
@@ -334,11 +341,9 @@ do_paraview_build_native
 
 do_cross()
 {
-#setup_native_compilers
 do_paraview_native_prereqs
 do_paraview_configure_hosttools
 do_paraview_build_hosttools
-#setup_cross_compilers
 
 do_toolchains
 do_python_build_cross
@@ -347,9 +352,6 @@ do_paraview_configure_cross
 do_paraview_build_cross
 }
 
-
-# this line is needed so that the "module" command will work
-#source /opt/modules/default/init/bash
 
 if [ -z $1 ]
 then
