@@ -297,7 +297,7 @@ do_paraview_configure_cross()
 rm -rf $base/source/paraview/build-cross
 mkdir -p $base/source/paraview/build-cross
 cd $base/source/paraview/build-cross
-bash $script_dir/configure_paraview_cross.sh ../ParaView $paraview_xinstall_dir $osmesa_xinstall_dir $python_xinstall_dir $cmake_command $toolchain_file $base/source/paraview/build-hosttools "$paraview_cross_cxx_flags"
+bash $script_dir/configure_paraview_cross.sh ../ParaView $paraview_xinstall_dir $osmesa_xinstall_dir $python_xinstall_dir $cmake_command $toolchain_file $base/source/paraview/build-hosttools $script_dir/cache-files/$paraview_cache_file
 }
 
 do_paraview_build_native()

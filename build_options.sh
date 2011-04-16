@@ -21,6 +21,7 @@ set_bgp_options()
   base=/scratch/pmarion/build-bgp
   toolchain_file=BlueGeneP-xl-static.cmake
   make_command="make -j2"
+  paraview_cache_file=paraview_bgp.cmake
   paraview_cross_cxx_flags="-O2 -qstrict -qarch=450d -qtune=450 -qcpluscmt"
   osmesa_config_name=bgp-osmesa-xlc
 }
