@@ -23,3 +23,6 @@ SET(VTK_USE_SYSTEM_ZLIB ON CACHE BOOL "" FORCE)
 SET(ZLIB_INCLUDE_DIR /soft/apps/current/zlib-1.2.5/include CACHE PATH "" FORCE)
 SET(ZLIB_LIBRARY /soft/apps/current/zlib-1.2.5/lib/libz.a CACHE FILEPATH "" FORCE)
 
+SET(PYTHON_UTIL_LIBRARY
+/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib/libutil.a;/bgsys/drivers/ppcfloor/gnu-linux/powerpc-bgp-linux/lib/libdl.a
+CACHE FILEPATH "" FORCE)
