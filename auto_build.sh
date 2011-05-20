@@ -38,10 +38,12 @@ toolchain_file=$base/toolchains/$toolchain_file
 setup_native_compilers()
 {
 module unload PrgEnv-pgi PrgEnv-gnu Base-opts
+module load gcc
 }
 
 setup_cross_compilers()
 {
+module unload gcc
 module load Base-opts $cross_compiler_module
 }
 
