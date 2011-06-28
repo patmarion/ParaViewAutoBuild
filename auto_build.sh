@@ -25,6 +25,7 @@ python_install_dir=$install_base/python-2.5.2
 python_xinstall_dir=$xinstall_base/python-2.5.2
 paraview_install_dir=$install_base/paraview
 paraview_xinstall_dir=$xinstall_base/paraview
+qt_install_dir=$install_base/qt-4.6.3
 
 git_command=$git_install_dir/bin/git
 cmake_command=$cmake_install_dir/bin/cmake
@@ -61,6 +62,18 @@ cd $package
 $make_command && make install
 }
 
+do_qt_git()
+{
+rm -rf $base/source/qt
+mkdir -p $base/source/qt
+cd $base/source/qt
+$git_command clone git://gitorious.org/qt/qt.git
+cd qt
+$git_command checkout v4.6.3
+sed -i s:OPT_CONFIRM_LICENSE=no:OPT_CONFIRM_LICENSE=yes:g configure
+./configure -opensource -qt-zlib -qt-libtiff -qt-libpng -qt-libmng -qt-libjpeg --prefix=$qt_install_dir
+$make_command && $make_command install
+}
 
 do_cmake()
 {
@@ -275,7 +288,13 @@ mkdir -p $base/source/paraview/build-native
 cd $base/source/paraview/build-native
 bash $script_dir/configure_paraview_native.sh ../ParaView $paraview_install_dir $osmesa_install_dir $python_install_dir $cmake_command
 }
-
+do_paraview_configure_native_gui()
+{
+rm -rf $base/source/paraview/build-native
+mkdir -p $base/source/paraview/build-native
+cd $base/source/paraview/build-native
+bash $script_dir/configure_paraview_native_gui.sh ../ParaView $paraview_install_dir $osmesa_install_dir $python_install_dir $cmake_command $qt_install_dir
+}
 
 do_paraview_configure_hosttools()
 {
@@ -331,7 +350,13 @@ do_paraview_native_prereqs
 do_paraview_configure_native
 do_paraview_build_native
 }
-
+do_native_gui()
+{
+do_paraview_native_prereqs
+do_qt_git
+do_paraview_configure_native_gui
+do_paraview_build_native
+}
 do_cross()
 {
 #setup_native_compilers
